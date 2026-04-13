@@ -20,6 +20,20 @@
 
 ---
 
+## Team Members
+
+- Sharliz Mayalpen Zafirah (5052241003)
+- Athaya Salsabila Alhen (5052241004)
+- Nabila Chesaria Octavia Putri (5052241006)
+- Amelia Widiastuti (5052241007)
+- Shafira Fajriyatul Hasanah (5052241011)
+- Dewa Putra Yuda (5052241012)
+- Marvelio Jonathan Wijaya (5052241017)
+- Difta Raditya Pratama (5052241020)
+- Muhammad Kafanal Kafi (5052241039)
+
+---
+
 ## 🚀 Tech Stack
 
 ### Languages
