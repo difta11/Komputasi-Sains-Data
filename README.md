@@ -1,115 +1,308 @@
-<h1 align="center">Hi there, I'm John Doe 👋</h1>
+# 📊 Ukuran Penyebaran (Measures of Dispersion)
 
-<p align="center">
-  <em>Data Scientist · Machine Learning Enthusiast · AI Builder</em>
-</p>
-
-<p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&pause=1000&color=2E9EF7&center=true&vCenter=true&width=435&lines=Turning+data+into+decisions;Building+intelligent+systems;Always+learning%2C+always+growing" alt="Typing SVG" />
-</p>
+Ukuran penyebaran adalah ukuran statistik yang menggambarkan **seberapa jauh** data tersebar atau bervariasi dari nilai pusatnya (mean, median). Semakin besar nilainya, semakin heterogen (beragam) data tersebut.
 
 ---
 
-## 🧠 About Me
+## 📋 Daftar Ukuran Penyebaran
 
-- 🔭 I'm currently working on **Machine Learning & AI projects**
-- 🌱 I'm always exploring the latest advancements in **AI research**
-- 💡 I love transforming raw data into **actionable insights**
-- 🎯 My goal: build intelligent systems that solve real-world problems
-- 📍 Based in **Indonesia**
-
----
-
-## 🚀 Tech Stack
-
-### Languages
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![R](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)
-
-### Machine Learning & AI
-![Scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
-![Keras](https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white)
-
-### Data & Visualization
-![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
-![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=python&logoColor=white)
-![Tidyverse](https://img.shields.io/badge/Tidyverse-1A162D?style=for-the-badge&logo=r&logoColor=white)
-
-### Tools & Environment
-![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
-![RStudio](https://img.shields.io/badge/RStudio-75AADB?style=for-the-badge&logo=rstudio&logoColor=white)
-![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
-![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
+| No | Ukuran | Simbol | Keterangan |
+|----|--------|--------|------------|
+| 1 | Range (Jangkauan) | R | Selisih nilai max dan min |
+| 2 | Deviasi Rata-rata (Mean Deviation) | MD | Rata-rata jarak dari mean |
+| 3 | Varians (Variance) | s² / σ² | Rata-rata kuadrat deviasi |
+| 4 | Standar Deviasi (Standard Deviation) | s / σ | Akar kuadrat dari varians |
+| 5 | Koefisien Variasi (CV) | CV | Penyebaran relatif dalam % |
+| 6 | Interkuartil Range (IQR) | IQR | Selisih Q3 dan Q1 |
 
 ---
 
-## 📊 What I Do
+## 1. 📏 Range (Jangkauan)
 
+**Definisi:** Selisih antara nilai maksimum dan nilai minimum dalam data.
+
+**Rumus:**
 ```
-📦 Data Collection & Wrangling
- ├── Clean and preprocess messy datasets
- ├── Feature engineering & selection
- └── Exploratory Data Analysis (EDA)
+R = X_max - X_min
+```
 
-🤖 Machine Learning
- ├── Supervised & Unsupervised Learning
- ├── Model training, tuning & evaluation
- └── Deployment-ready ML pipelines
+**Kelebihan:** Mudah dihitung  
+**Kekurangan:** Sangat sensitif terhadap outlier
 
-🧪 Experimentation & Research
- ├── A/B Testing & statistical analysis
- ├── Hypothesis testing
- └── Reproducible research workflows
+---
+
+## 2. 📐 Deviasi Rata-rata (Mean Deviation)
+
+**Definisi:** Rata-rata dari nilai absolut selisih setiap data terhadap mean.
+
+**Rumus:**
+```
+MD = Σ|Xi - X̄| / n
 ```
 
 ---
 
-## 📈 GitHub Stats
+## 3. 📊 Varians (Variance)
 
-<p align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=king&show_icons=true&theme=tokyonight&hide_border=true" alt="King's GitHub Stats" />
-</p>
+**Definisi:** Rata-rata dari kuadrat selisih setiap data terhadap mean.
 
-<p align="center">
-  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=king&layout=compact&theme=tokyonight&hide_border=true" alt="Top Languages" />
-</p>
+**Rumus Populasi:**
+```
+σ² = Σ(Xi - μ)² / N
+```
 
----
+**Rumus Sampel:**
+```
+s² = Σ(Xi - X̄)² / (n - 1)
+```
 
-## 🌟 Featured Projects
-
-| Project | Description | Tech |
-|--------|-------------|------|
-| 🤖 ML Pipeline | End-to-end machine learning pipeline | Python, Scikit-learn |
-| 📊 EDA Dashboard | Interactive exploratory data analysis tool | R, Shiny |
-| 🧠 Predictive Model | Prediction model for business use case | Python, XGBoost |
-
-> 💡 *More projects coming soon — stay tuned!*
+> Pembagi `n-1` pada sampel disebut **koreksi Bessel** untuk menghasilkan estimasi yang tidak bias.
 
 ---
 
-## 📬 Let's Connect
+## 4. 📉 Standar Deviasi (Standard Deviation)
 
-<p align="center">
-  <a href="https://linkedin.com/in/king">
-    <img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" />
-  </a>
-  <a href="mailto:king@email.com">
-    <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white" />
-  </a>
-  <a href="https://github.com/king">
-    <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" />
-  </a>
-</p>
+**Definisi:** Akar kuadrat dari varians. Satuannya sama dengan data asli, sehingga lebih mudah diinterpretasikan.
+
+**Rumus Sampel:**
+```
+s = √(Σ(Xi - X̄)² / (n - 1))
+```
 
 ---
 
-<p align="center">
-  <em>"Without data, you're just another person with an opinion." — W. Edwards Deming</em>
-</p>
+## 5. 📈 Koefisien Variasi (Coefficient of Variation)
 
-<p align="center">
-  <img src="https://komarev.com/ghpvc/?username=king&color=2E9EF7&style=flat-square&label=Profile+Views" alt="Profile Views" />
-</p>
+**Definisi:** Ukuran penyebaran relatif yang dinyatakan dalam persentase. Berguna untuk membandingkan variabilitas dua kelompok data dengan satuan berbeda.
+
+**Rumus:**
+```
+CV = (s / X̄) × 100%
+```
+
+> CV < 30% → data homogen  
+> CV ≥ 30% → data heterogen
+
+---
+
+## 6. 📦 Interkuartil Range (IQR)
+
+**Definisi:** Selisih antara kuartil ketiga (Q3) dan kuartil pertama (Q1). Merepresentasikan sebaran 50% data tengah.
+
+**Rumus:**
+```
+IQR = Q3 - Q1
+```
+
+**Kelebihan:** Tidak terpengaruh outlier (robust)
+
+---
+
+## 💻 Implementasi R dengan Looping
+
+```r
+# ============================================================
+# UKURAN PENYEBARAN - Implementasi R dengan Looping
+# ============================================================
+
+# --- Data ---
+data_list <- list(
+  Kelompok_A = c(10, 20, 30, 40, 50, 60, 70),
+  Kelompok_B = c(35, 36, 38, 40, 42, 44, 45),
+  Kelompok_C = c(5, 15, 50, 80, 100, 120, 200)
+)
+
+# ============================================================
+# Fungsi-fungsi ukuran penyebaran (manual)
+# ============================================================
+
+hitung_range <- function(x) {
+  max(x) - min(x)
+}
+
+hitung_mean_deviation <- function(x) {
+  mean(abs(x - mean(x)))
+}
+
+hitung_varians_sampel <- function(x) {
+  n <- length(x)
+  sum((x - mean(x))^2) / (n - 1)
+}
+
+hitung_sd_sampel <- function(x) {
+  sqrt(hitung_varians_sampel(x))
+}
+
+hitung_cv <- function(x) {
+  (hitung_sd_sampel(x) / mean(x)) * 100
+}
+
+hitung_iqr <- function(x) {
+  q <- quantile(x, probs = c(0.25, 0.75))
+  unname(q[2] - q[1])
+}
+
+# ============================================================
+# Looping: Hitung semua ukuran penyebaran untuk tiap kelompok
+# ============================================================
+
+cat("=============================================================\n")
+cat("       HASIL UKURAN PENYEBARAN PER KELOMPOK\n")
+cat("=============================================================\n\n")
+
+# Simpan hasil ke dalam list untuk analisis lanjutan
+hasil <- list()
+
+for (nama in names(data_list)) {
+  x <- data_list[[nama]]
+
+  range_val <- hitung_range(x)
+  md_val    <- hitung_mean_deviation(x)
+  var_val   <- hitung_varians_sampel(x)
+  sd_val    <- hitung_sd_sampel(x)
+  cv_val    <- hitung_cv(x)
+  iqr_val   <- hitung_iqr(x)
+
+  hasil[[nama]] <- list(
+    Range   = range_val,
+    MD      = md_val,
+    Varians = var_val,
+    SD      = sd_val,
+    CV      = cv_val,
+    IQR     = iqr_val
+  )
+
+  cat(sprintf("--- %s ---\n", nama))
+  cat(sprintf("  Data          : %s\n", paste(x, collapse = ", ")))
+  cat(sprintf("  Mean          : %.4f\n", mean(x)))
+  cat(sprintf("  Range         : %.4f\n", range_val))
+  cat(sprintf("  Mean Deviation: %.4f\n", md_val))
+  cat(sprintf("  Varians (s²)  : %.4f\n", var_val))
+  cat(sprintf("  Std Deviasi   : %.4f\n", sd_val))
+  cat(sprintf("  Koef. Variasi : %.2f%%\n", cv_val))
+  cat(sprintf("  IQR           : %.4f\n", iqr_val))
+  cat("\n")
+}
+
+# ============================================================
+# Looping: Buat tabel ringkasan perbandingan antar kelompok
+# ============================================================
+
+cat("=============================================================\n")
+cat("              TABEL RINGKASAN PERBANDINGAN\n")
+cat("=============================================================\n")
+cat(sprintf("%-15s %8s %8s %10s %8s %8s %8s\n",
+    "Kelompok", "Range", "MD", "Varians", "SD", "CV(%)", "IQR"))
+cat(strrep("-", 70), "\n")
+
+for (nama in names(hasil)) {
+  h <- hasil[[nama]]
+  cat(sprintf("%-15s %8.2f %8.2f %10.2f %8.2f %8.2f %8.2f\n",
+      nama, h$Range, h$MD, h$Varians, h$SD, h$CV, h$IQR))
+}
+cat(strrep("-", 70), "\n")
+
+# ============================================================
+# Looping: Interpretasi otomatis berdasarkan CV
+# ============================================================
+
+cat("\n=============================================================\n")
+cat("               INTERPRETASI KOEFISIEN VARIASI\n")
+cat("=============================================================\n")
+
+for (nama in names(hasil)) {
+  cv <- hasil[[nama]]$CV
+  kategori <- ifelse(cv < 30, "HOMOGEN (seragam)", "HETEROGEN (beragam)")
+  cat(sprintf("  %s → CV = %.2f%% → Data %s\n", nama, cv, kategori))
+}
+
+# ============================================================
+# Looping: Deteksi outlier menggunakan IQR Fence
+# ============================================================
+
+cat("\n=============================================================\n")
+cat("           DETEKSI OUTLIER (Metode IQR Fence)\n")
+cat("=============================================================\n")
+
+for (nama in names(data_list)) {
+  x   <- data_list[[nama]]
+  q1  <- quantile(x, 0.25)
+  q3  <- quantile(x, 0.75)
+  iqr <- q3 - q1
+  lb  <- q1 - 1.5 * iqr   # Lower Bound
+  ub  <- q3 + 1.5 * iqr   # Upper Bound
+
+  outlier <- x[x < lb | x > ub]
+
+  cat(sprintf("  %s:\n", nama))
+  cat(sprintf("    Batas Bawah = %.2f | Batas Atas = %.2f\n", lb, ub))
+
+  if (length(outlier) == 0) {
+    cat("    Outlier     : Tidak ada\n")
+  } else {
+    cat(sprintf("    Outlier     : %s\n", paste(outlier, collapse = ", ")))
+  }
+  cat("\n")
+}
+```
+
+---
+
+## 📤 Contoh Output
+
+```
+=============================================================
+       HASIL UKURAN PENYEBARAN PER KELOMPOK
+=============================================================
+
+--- Kelompok_A ---
+  Data          : 10, 20, 30, 40, 50, 60, 70
+  Mean          : 40.0000
+  Range         : 60.0000
+  Mean Deviation: 17.1429
+  Varians (s²)  : 466.6667
+  Std Deviasi   : 21.6025
+  Koef. Variasi : 54.01%
+  IQR           : 30.0000
+
+--- Kelompok_B ---
+  Data          : 35, 36, 38, 40, 42, 44, 45
+  Mean          : 40.0000
+  Range         : 10.0000
+  Mean Deviation: 2.8571
+  Varians (s²)  : 12.6667
+  Std Deviasi   : 3.5590
+  Koef. Variasi : 8.90%
+  IQR           : 6.0000
+
+--- Kelompok_C ---
+  Data          : 5, 15, 50, 80, 100, 120, 200
+  Mean          : 81.4286
+  Range         : 195.0000
+  ...
+```
+
+---
+
+## 🔍 Cara Membaca Hasil
+
+| Ukuran | Nilai Kecil | Nilai Besar |
+|--------|-------------|-------------|
+| Range | Data homogen | Data heterogen / ada outlier |
+| MD | Deviasi kecil dari mean | Deviasi besar dari mean |
+| Varians | Data berkelompok | Data tersebar |
+| SD | Variasi kecil | Variasi besar |
+| CV | < 30% → Homogen | ≥ 30% → Heterogen |
+| IQR | Data tengah rapat | Data tengah tersebar |
+
+---
+
+## 📚 Referensi
+
+- Walpole, R.E. et al. *Probability & Statistics for Engineers and Scientists*
+- Montgomery, D.C. *Applied Statistics and Probability for Engineers*
+- R Documentation: `?var`, `?sd`, `?IQR`, `?quantile`
+
+---
+
+*Dibuat untuk keperluan pembelajaran statistika deskriptif* 📖
