@@ -21,3 +21,17 @@ mean_function_fast_track <- function(data) {
 
 avg_x_wf <- average_data(data)
 avg_x_wf
+
+varians <- function(data) {
+    sigma <- 0
+    for (i in data) {
+        sigma <- sigma + i
+    }
+    mean <- sigma/len(data)
+    
+    ssquare <- 0
+    for (i in data) {
+        ssquare <- ssquare + (i-mean)*i-mean)
+    }
+    return (ssquare/(len(data)-1))
+}
