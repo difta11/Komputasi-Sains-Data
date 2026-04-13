@@ -1,125 +1,115 @@
-# 🚀 Tutorial GitHUB R - Komputasi Sains Data Kelompok 2
+<h1 align="center">Hi there, I'm King 👋</h1>
 
-Panduan lengkap untuk menghubungkan R/RStudio dengan GitHub dan mengelola kode menggunakan Git.
+<p align="center">
+  <em>Data Scientist · Machine Learning Enthusiast · AI Builder</em>
+</p>
 
----
-
-## 📋 Persiapan Awal
-
-Sebelum mulai, pastikan kamu sudah menyiapkan hal-hal berikut:
-
-### 1. 🧑‍💻 Buat Akun GitHub
-Daftar akun di [https://github.com](https://github.com) jika belum punya.
-
-### 2. 📦 Update R + Install RStudio
-- Download R terbaru dari [https://cran.r-project.org](https://cran.r-project.org)
-- Download RStudio dari [https://posit.co/downloads](https://posit.co/downloads)
-- Pastikan R dan RStudio sudah diperbarui ke versi terbaru
-
-### 3. 🔧 Install & Setup Git
-Ikuti panduan lengkap di **Chapter 6** dokumentasi ini.
-
-Atau secara singkat:
-- **Windows**: Download Git dari [https://git-scm.com](https://git-scm.com)
-- **Mac**: Jalankan `git --version` di Terminal, ikuti instruksi instalasi
-- **Linux**: `sudo apt install git`
-
-Setelah install, konfigurasikan identitas Git kamu:
-```bash
-git config --global user.name "Nama Kamu"
-git config --global user.email "email@kamu.com"
-```
-
-### 4. 🔑 Buat Token (Personal Access Token)
-1. Login ke GitHub
-2. Pergi ke **[Settings di GitHub](https://github.com/settings/tokens)**
-3. Klik **Developer settings** → **Personal access tokens** → **Tokens (classic)**
-4. Klik **Generate new token**
-5. Beri nama token, pilih scope `repo`, lalu klik **Generate token**
-6. **Salin token** dan simpan di tempat aman (tidak bisa dilihat lagi!)
-
-### 5. 🔗 Connect R ke GitHub
-Di dalam RStudio, jalankan perintah berikut:
-
-```r
-# Install package usethis jika belum ada
-install.packages("usethis")
-install.packages("gitcreds")
-
-library(usethis)
-library(gitcreds)
-
-# Simpan token GitHub ke dalam credential store
-gitcreds_set()
-# Paste token kamu saat diminta
-```
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&pause=1000&color=2E9EF7&center=true&vCenter=true&width=435&lines=Turning+data+into+decisions;Building+intelligent+systems;Always+learning%2C+always+growing" alt="Typing SVG" />
+</p>
 
 ---
 
-## 🔄 Workflow: Update Code ke GitHub
+## 🧠 About Me
 
-### Langkah 1 — Clone atau Buat Repo Baru
-
-**Clone repo yang sudah ada:**
-```r
-usethis::create_from_github(
-  "https://github.com/username/nama-repo",
-  destdir = "~/Documents/"
-)
-```
-
-**Buat repo baru dari RStudio:**
-```r
-usethis::use_git()       # Inisialisasi Git di project lokal
-usethis::use_github()    # Push project ke GitHub
-```
-
-### Langkah 2 — Edit File di RStudio
-
-Lakukan perubahan pada file `.R`, `.Rmd`, atau file lainnya seperti biasa.
-
-### Langkah 3 — Stage, Commit, dan Push
-
-Menggunakan **Git pane** di RStudio (kanan atas):
-1. Centang file yang ingin di-commit (Stage)
-2. Klik **Commit**, tulis pesan commit yang jelas
-3. Klik **Push** untuk mengirim ke GitHub
-
-Atau menggunakan terminal:
-```bash
-git add .
-git commit -m "Pesan commit yang deskriptif"
-git push origin main
-```
-
-### Langkah 4 — Pull Perubahan dari GitHub
-
-Jika ada perubahan dari kolaborator atau dari device lain:
-```bash
-git pull origin main
-```
-
-Di RStudio: klik tombol **Pull** di Git pane.
+- 🔭 I'm currently working on **Machine Learning & AI projects**
+- 🌱 I'm always exploring the latest advancements in **AI research**
+- 💡 I love transforming raw data into **actionable insights**
+- 🎯 My goal: build intelligent systems that solve real-world problems
+- 📍 Based in **Indonesia**
 
 ---
 
-## 💡 Tips & Troubleshooting
+## 🚀 Tech Stack
 
-| Masalah | Solusi |
-|--------|--------|
-| Token expired | Buat token baru di GitHub Settings dan jalankan `gitcreds_set()` lagi |
-| Push ditolak | Lakukan `git pull` terlebih dahulu sebelum push |
-| Konflik merge | Edit file yang konflik, hapus marker `<<<`, lalu commit ulang |
-| Git tidak terdeteksi di RStudio | Cek path Git di **Tools → Global Options → Git/SVN** |
+### Languages
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![R](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)
+
+### Machine Learning & AI
+![Scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
+![Keras](https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white)
+
+### Data & Visualization
+![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=python&logoColor=white)
+![Tidyverse](https://img.shields.io/badge/Tidyverse-1A162D?style=for-the-badge&logo=r&logoColor=white)
+
+### Tools & Environment
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
+![RStudio](https://img.shields.io/badge/RStudio-75AADB?style=for-the-badge&logo=rstudio&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
 
 ---
 
-## 📚 Referensi
+## 📊 What I Do
 
-- [Happy Git with R](https://happygitwithr.com) — panduan paling lengkap untuk Git + R
-- [GitHub Docs](https://docs.github.com)
-- [Posit / RStudio Docs](https://docs.posit.co)
+```
+📦 Data Collection & Wrangling
+ ├── Clean and preprocess messy datasets
+ ├── Feature engineering & selection
+ └── Exploratory Data Analysis (EDA)
+
+🤖 Machine Learning
+ ├── Supervised & Unsupervised Learning
+ ├── Model training, tuning & evaluation
+ └── Deployment-ready ML pipelines
+
+🧪 Experimentation & Research
+ ├── A/B Testing & statistical analysis
+ ├── Hypothesis testing
+ └── Reproducible research workflows
+```
 
 ---
 
-> 💬 Ada pertanyaan? Buka *Issue* di repo ini atau hubungi instructor.
+## 📈 GitHub Stats
+
+<p align="center">
+  <img src="https://github-readme-stats.vercel.app/api?username=king&show_icons=true&theme=tokyonight&hide_border=true" alt="King's GitHub Stats" />
+</p>
+
+<p align="center">
+  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=king&layout=compact&theme=tokyonight&hide_border=true" alt="Top Languages" />
+</p>
+
+---
+
+## 🌟 Featured Projects
+
+| Project | Description | Tech |
+|--------|-------------|------|
+| 🤖 ML Pipeline | End-to-end machine learning pipeline | Python, Scikit-learn |
+| 📊 EDA Dashboard | Interactive exploratory data analysis tool | R, Shiny |
+| 🧠 Predictive Model | Prediction model for business use case | Python, XGBoost |
+
+> 💡 *More projects coming soon — stay tuned!*
+
+---
+
+## 📬 Let's Connect
+
+<p align="center">
+  <a href="https://linkedin.com/in/king">
+    <img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" />
+  </a>
+  <a href="mailto:king@email.com">
+    <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white" />
+  </a>
+  <a href="https://github.com/king">
+    <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" />
+  </a>
+</p>
+
+---
+
+<p align="center">
+  <em>"Without data, you're just another person with an opinion." — W. Edwards Deming</em>
+</p>
+
+<p align="center">
+  <img src="https://komarev.com/ghpvc/?username=king&color=2E9EF7&style=flat-square&label=Profile+Views" alt="Profile Views" />
+</p>
