@@ -730,4 +730,3 @@ Dalam modul ini, kita telah mempelajari tiga kategori besar **Data Reduction**:
 10. **Equal-Frequency Binning** — Frekuensi per bin seragam, lebih robust
 11. **Custom Binning** — Berdasarkan domain knowledge
 
-> ✅ Kamu telah menyelesaikan seluruh modul **Data Pre-Processing in R**!
