@@ -23,9 +23,6 @@ r-data-preprocessing/
 │   ├── raw_data.csv                 ← Data mentah (belum diproses)
 │   └── clean_data.csv               ← Data hasil preprocessing
 │
-├── figures/                         ← Hasil visualisasi
-│   └── (dihasilkan otomatis saat knit .Rmd)
-│
 └── requirements.txt                 ← Daftar package R yang dibutuhkan
 ```
 
