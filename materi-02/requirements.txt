@@ -1,0 +1,58 @@
+# ============================================================
+# requirements.txt — Daftar Package R untuk Modul Pre-Processing
+# ============================================================
+# Cara install semua package:
+#   packages <- readLines("requirements.txt")
+#   packages <- packages[!grepl("^#", packages) & packages != ""]
+#   install.packages(setdiff(packages, rownames(installed.packages())))
+# ============================================================
+
+# --- Data Manipulation ---
+tidyverse
+dplyr
+tidyr
+stringr
+lubridate
+forcats
+
+# --- Missing Value Handling ---
+mice
+VIM
+naniar
+missForest
+
+# --- Outlier Detection ---
+outliers
+EnvStats
+
+# --- Encoding & Transformation ---
+caret
+recipes
+scales
+
+# --- Feature Selection ---
+Boruta
+randomForest
+corrplot
+ggcorrplot
+
+# --- Dimensionality Reduction ---
+stats
+Rtsne
+umap
+FactoMineR
+factoextra
+
+# --- Visualization ---
+ggplot2
+gridExtra
+patchwork
+RColorBrewer
+viridis
+plotly
+GGally
+
+# --- Data Quality Check ---
+skimr
+DataExplorer
+janitor
