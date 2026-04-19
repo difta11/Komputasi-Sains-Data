@@ -4,7 +4,7 @@
 ---
 ```
 Korelasi/
-├── README.md                  # Dokumentasi materi (file ini)
+├── README.md                  # Dokumentasi materi 
 ├── korelasi.Rmd               # Notebook R Markdown utama
 ├── data/
 │   └── clean_data.csv         # Dataset karyawan
@@ -103,10 +103,6 @@ Setiap nilai korelasi perlu diuji apakah **signifikan secara statistik**:
 
 ---
 ## Implementasi R
-
-Analisis korelasi lengkap diimplementasikan dalam file R Markdown berikut:
-
-📄 **[`korelasi.Rmd`](./korelasi.Rmd)**
 
 ### Library yang Digunakan
 
