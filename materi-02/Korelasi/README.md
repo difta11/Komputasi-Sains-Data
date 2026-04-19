@@ -2,7 +2,7 @@
 > Memahami hubungan antar variabel menggunakan metode statistik dan visualisasi
 
 ---
-
+```
 Korelasi/
 ├── README.md                  # Dokumentasi materi (file ini)
 ├── korelasi.Rmd               # Notebook R Markdown utama
@@ -10,7 +10,7 @@ Korelasi/
 │   └── clean_data.csv         # Dataset karyawan
 └── output/
     └── korelasi_analisis.html ← Hasil knit Rmd
-
+```
 ---
 
 ## Deskripsi
