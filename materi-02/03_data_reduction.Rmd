@@ -1,0 +1,733 @@
+---
+title: "Modul 03 — Data Reduction"
+author: "Data Pre-Processing in R"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 8,
+  fig.height = 5,
+  fig.path   = "../figures/"
+)
+```
+
+---
+
+# Pendahuluan
+
+**Data Reduction** adalah serangkaian teknik untuk mengurangi kompleksitas dataset tanpa kehilangan informasi yang signifikan. Tujuannya adalah:
+
+- Mengatasi *curse of dimensionality* (kutukan dimensi)
+- Mempercepat waktu training model
+- Meningkatkan interpretabilitas model
+- Mengurangi risiko overfitting
+- Memudahkan visualisasi data multidimensi
+
+---
+
+# Load Library dan Data
+
+```{r load-lib}
+library(tidyverse)
+library(corrplot)
+library(ggcorrplot)
+library(Boruta)
+library(randomForest)
+library(FactoMineR)
+library(factoextra)
+library(Rtsne)
+library(umap)
+library(caret)
+```
+
+```{r load-data}
+df <- read.csv("../data/clean_data.csv", stringsAsFactors = FALSE) %>%
+  mutate(
+    department = as.factor(department),
+    city       = as.factor(city)
+  )
+
+# Siapkan data numerik saja
+df_num <- df %>%
+  select(age, salary, performance_score, years_experience) %>%
+  na.omit()
+
+cat("Data numerik:", dim(df_num)[1], "baris x", dim(df_num)[2], "kolom\n")
+head(df_num)
+```
+
+---
+
+# Feature Selection
+
+## Konsep
+
+**Feature Selection** adalah proses memilih subset fitur yang **paling relevan** untuk membangun model. Berbeda dengan dimensionality reduction, feature selection **tidak mengubah** representasi fitur — hanya memilih atau membuang fitur yang ada.
+
+Manfaat:
+- Mengurangi overfitting
+- Meningkatkan akurasi
+- Mengurangi waktu training
+- Meningkatkan interpretabilitas
+
+## Filter Method: Korelasi
+
+### Analisis Korelasi
+
+```{r corr-matrix, fig.cap="Matriks korelasi antar variabel numerik"}
+# Hitung matriks korelasi
+cor_matrix <- cor(df_num, use = "complete.obs")
+round(cor_matrix, 3)
+```
+
+```{r corr-plot, fig.cap="Heatmap korelasi dengan nilai signifikansi"}
+# Visualisasi korelasi dengan ggcorrplot
+ggcorrplot(
+  cor_matrix,
+  method    = "circle",
+  type      = "lower",
+  lab       = TRUE,
+  lab_size  = 4,
+  colors    = c("#E74C3C", "white", "#2ECC71"),
+  title     = "Matriks Korelasi Variabel Numerik",
+  ggtheme   = theme_minimal()
+)
+```
+
+```{r corr-filter}
+# Hapus fitur dengan korelasi sangat tinggi (> 0.85)
+high_cor <- findCorrelation(cor_matrix, cutoff = 0.85, names = TRUE)
+
+if (length(high_cor) == 0) {
+  cat("Tidak ada pasangan fitur dengan korelasi > 0.85\n")
+} else {
+  cat("Fitur dengan korelasi tinggi yang dihapus:", paste(high_cor, collapse = ", "), "\n")
+}
+```
+
+### Variance Inflation Factor (VIF)
+
+```{r vif}
+library(car)
+
+# VIF mengukur multikolinearitas
+# Perlu variabel target — gunakan performance_score
+model_vif <- lm(performance_score ~ age + salary + years_experience, data = df)
+vif_values <- vif(model_vif)
+
+cat("VIF values:\n")
+print(round(vif_values, 3))
+cat("\nInterpretasi: VIF > 10 = multikolinearitas serius\n")
+```
+
+## Filter Method: Uji Statistik
+
+```{r statistical-filter}
+# Uji Kruskal-Wallis: apakah fitur berbeda signifikan antar departemen?
+kruskal_results <- df_num %>%
+  bind_cols(department = df$department[1:nrow(df_num)]) %>%
+  pivot_longer(-department, names_to = "fitur", values_to = "nilai") %>%
+  group_by(fitur) %>%
+  summarise(
+    p_value    = kruskal.test(nilai ~ department)$p.value,
+    chi_sq     = kruskal.test(nilai ~ department)$statistic,
+    signifikan = p_value < 0.05,
+    .groups    = "drop"
+  ) %>%
+  arrange(p_value)
+
+print(kruskal_results)
+```
+
+## Wrapper Method: Recursive Feature Elimination (RFE)
+
+```{r rfe, fig.cap="Akurasi model berdasarkan jumlah fitur yang dipilih (RFE)"}
+set.seed(42)
+
+# Siapkan data dengan variabel target biner
+df_rfe <- df_num %>%
+  mutate(
+    target = as.factor(ifelse(performance_score > median(performance_score), "High", "Low"))
+  ) %>%
+  select(-performance_score)
+
+# Konfigurasi RFE
+ctrl_rfe <- rfeControl(
+  functions = rfFuncs,   # Random Forest sebagai estimator
+  method    = "cv",
+  number    = 5,
+  verbose   = FALSE
+)
+
+# Jalankan RFE
+rfe_result <- rfe(
+  x       = df_rfe %>% select(-target),
+  y       = df_rfe$target,
+  sizes   = c(1, 2, 3),
+  rfeControl = ctrl_rfe
+)
+
+cat("Fitur terpilih:\n")
+print(predictors(rfe_result))
+
+plot(rfe_result, type = c("g", "o"), main = "RFE — Akurasi vs Jumlah Fitur")
+```
+
+## Embedded Method: Boruta (Feature Importance)
+
+```{r boruta, fig.cap="Visualisasi Boruta: fitur penting vs tidak penting"}
+set.seed(42)
+
+df_boruta <- df %>%
+  select(age, salary, performance_score, years_experience, department, city) %>%
+  mutate(across(where(is.character), as.factor))
+
+boruta_result <- Boruta(
+  performance_score ~ age + salary + years_experience,
+  data    = df_boruta,
+  doTrace = 0,
+  maxRuns = 50
+)
+
+cat("Hasil Boruta:\n")
+print(boruta_result)
+
+# Visualisasi
+plot(
+  boruta_result,
+  las  = 2,
+  main = "Boruta: Feature Importance",
+  xlab = ""
+)
+```
+
+```{r boruta-summary}
+# Tentukan fitur final
+final_boruta <- TentativeRoughFix(boruta_result)
+fitur_terpilih <- getSelectedAttributes(final_boruta, withTentative = FALSE)
+cat("Fitur yang dianggap penting oleh Boruta:", paste(fitur_terpilih, collapse = ", "), "\n")
+```
+
+## Embedded Method: LASSO Regularization
+
+```{r lasso}
+library(glmnet)
+
+# Matrix prediktor dan vektor target
+X <- model.matrix(performance_score ~ age + salary + years_experience, data = df_num)[, -1]
+y <- df_num$performance_score
+
+# Cross-validation untuk cari lambda optimal
+set.seed(42)
+cv_lasso <- cv.glmnet(X, y, alpha = 1)  # alpha=1 = LASSO
+
+cat("Lambda optimal (min):", round(cv_lasso$lambda.min, 6), "\n")
+cat("Lambda optimal (1se):", round(cv_lasso$lambda.1se, 6), "\n")
+
+# Koefisien pada lambda optimal
+coef_lasso <- coef(cv_lasso, s = "lambda.1se")
+cat("\nKoefisien LASSO (fitur dengan koef != 0 = fitur terpilih):\n")
+print(coef_lasso)
+```
+
+---
+
+# Dimensionality Reduction
+
+## Konsep
+
+**Dimensionality Reduction** mengubah data berdimensi tinggi menjadi representasi berdimensi lebih rendah sambil mempertahankan informasi penting sebanyak mungkin.
+
+Ada dua pendekatan utama:
+- **Linear**: PCA, LDA
+- **Non-linear (Manifold Learning)**: t-SNE, UMAP
+
+---
+
+## PCA (Principal Component Analysis)
+
+### Konsep
+
+PCA menemukan **arah variansi terbesar** dalam data dan memproyeksikan data ke subspace berdimensi lebih rendah. Setiap komponen utama (*principal component*) adalah kombinasi linear dari fitur-fitur asli yang saling ortogonal.
+
+```{r pca-fit}
+# Standardisasi data sebelum PCA
+df_scaled <- scale(df_num)
+
+# Fit PCA
+pca_result <- prcomp(df_scaled, center = FALSE, scale. = FALSE)
+
+# Ringkasan PCA
+summary(pca_result)
+```
+
+```{r pca-variance, fig.cap="Scree plot: variansi yang dijelaskan oleh setiap komponen utama"}
+# Scree Plot
+fviz_eig(
+  pca_result,
+  addlabels = TRUE,
+  ylim      = c(0, 70),
+  barfill   = "#3498DB",
+  barcolor  = "#2980B9",
+  linecolor = "#E74C3C",
+  main      = "Scree Plot — Variansi yang Dijelaskan PCA",
+  xlab      = "Komponen Utama",
+  ylab      = "Persentase Variansi (%)"
+)
+```
+
+```{r pca-biplot, fig.cap="PCA Biplot: posisi observasi dan kontribusi variabel"}
+# Biplot
+fviz_pca_biplot(
+  pca_result,
+  repel           = TRUE,
+  col.var         = "#E74C3C",  # Warna panah variabel
+  col.ind         = "#2C3E50",  # Warna titik observasi
+  alpha.ind       = 0.4,
+  label           = "var",
+  title           = "PCA Biplot",
+  ggtheme         = theme_minimal()
+)
+```
+
+```{r pca-loadings, fig.cap="Kontribusi variabel terhadap PC1 dan PC2"}
+# Loading plot — seberapa besar kontribusi tiap variabel
+fviz_pca_var(
+  pca_result,
+  col.var = "contrib",
+  gradient.cols = c("#F1C40F", "#E67E22", "#E74C3C"),
+  repel   = TRUE,
+  title   = "Kontribusi Variabel pada PCA"
+)
+```
+
+```{r pca-contrib, fig.cap="Kontribusi variabel terhadap PC1"}
+# Kontribusi spesifik tiap variabel ke PC1
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 10,
+             title = "Kontribusi Variabel ke PC1")
+```
+
+```{r pca-scatter, fig.cap="Scatter plot PC1 vs PC2 dengan warna berdasarkan departemen"}
+# Scatter plot PC1 vs PC2 diwarnai berdasarkan departemen
+pca_scores <- as.data.frame(pca_result$x[, 1:2])
+pca_scores$department <- df$department[1:nrow(pca_scores)]
+
+ggplot(pca_scores, aes(x = PC1, y = PC2, color = department)) +
+  geom_point(size = 2, alpha = 0.7) +
+  stat_ellipse(level = 0.8, linetype = "dashed") +
+  labs(
+    title    = "PCA: PC1 vs PC2 berdasarkan Departemen",
+    subtitle = paste0(
+      "PC1 menjelaskan ",
+      round(summary(pca_result)$importance[2,1]*100, 1), "% variansi, ",
+      "PC2 menjelaskan ",
+      round(summary(pca_result)$importance[2,2]*100, 1), "% variansi"
+    ),
+    color    = "Departemen"
+  ) +
+  theme_minimal()
+```
+
+```{r pca-reconstruct}
+# Pilih jumlah komponen berdasarkan variansi kumulatif > 80%
+var_explained <- summary(pca_result)$importance[3, ]
+n_comp <- min(which(var_explained >= 0.80))
+cat("Jumlah komponen untuk 80% variansi:", n_comp, "\n")
+
+# Rekonstruksi dataset dengan komponen terpilih
+df_pca <- as.data.frame(pca_result$x[, 1:n_comp])
+cat("Dimensi setelah PCA:", dim(df_pca), "\n")
+```
+
+---
+
+## t-SNE (t-Distributed Stochastic Neighbor Embedding)
+
+### Konsep
+
+**t-SNE** adalah teknik non-linear yang sangat efektif untuk **visualisasi** data berdimensi tinggi. Berbeda dengan PCA, t-SNE mempertahankan struktur lokal (kedekatan antar titik yang berdekatan) lebih baik daripada struktur global.
+
+Parameter penting:
+- **perplexity**: Keseimbangan antara struktur lokal dan global (biasanya 5–50)
+- **max_iter**: Jumlah iterasi optimasi
+
+```{r tsne, fig.cap="Visualisasi t-SNE: pengelompokan data dalam 2 dimensi"}
+set.seed(42)
+
+# t-SNE memerlukan data tidak duplikat
+df_tsne_input <- unique(df_scaled)
+
+tsne_result <- Rtsne(
+  df_tsne_input,
+  dims        = 2,
+  perplexity  = 15,
+  max_iter    = 1000,
+  check_duplicates = FALSE,
+  verbose     = FALSE
+)
+
+# Gabungkan hasil dengan label
+df_tsne_plot <- data.frame(
+  TSNE1      = tsne_result$Y[, 1],
+  TSNE2      = tsne_result$Y[, 2],
+  department = df$department[1:nrow(df_tsne_input)]
+)
+
+ggplot(df_tsne_plot, aes(x = TSNE1, y = TSNE2, color = department)) +
+  geom_point(size = 2, alpha = 0.7) +
+  labs(
+    title    = "t-SNE Visualization",
+    subtitle = "Perplexity = 15, Max Iter = 1000",
+    color    = "Departemen",
+    x        = "t-SNE Dimensi 1",
+    y        = "t-SNE Dimensi 2"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+```{r tsne-perplexity, fig.cap="Pengaruh perplexity terhadap hasil t-SNE"}
+# Perbandingan perplexity berbeda
+set.seed(42)
+tsne_5   <- Rtsne(df_tsne_input, dims=2, perplexity=5,  max_iter=500, verbose=FALSE, check_duplicates=FALSE)
+tsne_30  <- Rtsne(df_tsne_input, dims=2, perplexity=30, max_iter=500, verbose=FALSE, check_duplicates=FALSE)
+
+make_tsne_plot <- function(tsne_obj, perp_val) {
+  df_plot <- data.frame(
+    TSNE1 = tsne_obj$Y[,1],
+    TSNE2 = tsne_obj$Y[,2],
+    dept  = df$department[1:nrow(df_tsne_input)]
+  )
+  ggplot(df_plot, aes(x=TSNE1, y=TSNE2, color=dept)) +
+    geom_point(size=1.5, alpha=0.7) +
+    labs(title=paste("Perplexity =", perp_val), color="Dept") +
+    theme_minimal() +
+    theme(legend.position = "none", plot.title = element_text(hjust=0.5))
+}
+
+gridExtra::grid.arrange(
+  make_tsne_plot(tsne_5, 5),
+  make_tsne_plot(tsne_30, 30),
+  ncol = 2,
+  top  = "Pengaruh Perplexity pada t-SNE"
+)
+```
+
+---
+
+## UMAP (Uniform Manifold Approximation and Projection)
+
+### Konsep
+
+**UMAP** adalah algoritma dimensionality reduction yang lebih cepat dari t-SNE dan lebih baik dalam mempertahankan **struktur global** data. UMAP cocok untuk:
+
+- Dataset besar (lebih skalabel dari t-SNE)
+- Ketika struktur global data penting
+- Sebagai preprocessing sebelum clustering
+
+Parameter penting:
+- **n_neighbors**: Ukuran lingkungan lokal (antara 2–200)
+- **min_dist**: Jarak minimum antar titik dalam representasi rendah
+
+```{r umap, fig.cap="Visualisasi UMAP dalam 2 dimensi"}
+set.seed(42)
+
+# Konfigurasi UMAP
+umap_config <- umap.defaults
+umap_config$n_neighbors <- 15
+umap_config$min_dist    <- 0.1
+umap_config$n_components <- 2
+
+umap_result <- umap(df_tsne_input, config = umap_config)
+
+df_umap_plot <- data.frame(
+  UMAP1      = umap_result$layout[, 1],
+  UMAP2      = umap_result$layout[, 2],
+  department = df$department[1:nrow(df_tsne_input)]
+)
+
+ggplot(df_umap_plot, aes(x = UMAP1, y = UMAP2, color = department)) +
+  geom_point(size = 2, alpha = 0.7) +
+  labs(
+    title    = "UMAP Visualization",
+    subtitle = "n_neighbors=15, min_dist=0.1",
+    color    = "Departemen",
+    x        = "UMAP 1",
+    y        = "UMAP 2"
+  ) +
+  theme_minimal()
+```
+
+```{r compare-methods, fig.cap="Perbandingan PCA, t-SNE, dan UMAP dalam satu panel"}
+# Panel perbandingan ketiga metode
+p_pca <- ggplot(pca_scores, aes(x = PC1, y = PC2, color = department)) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  labs(title = "PCA", color = "Dept") +
+  theme_minimal() + theme(legend.position = "none")
+
+p_tsne <- ggplot(df_tsne_plot, aes(x = TSNE1, y = TSNE2, color = department)) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  labs(title = "t-SNE", color = "Dept") +
+  theme_minimal() + theme(legend.position = "none")
+
+p_umap <- ggplot(df_umap_plot, aes(x = UMAP1, y = UMAP2, color = department)) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  labs(title = "UMAP", color = "Dept") +
+  theme_minimal() + theme(legend.position = "right")
+
+gridExtra::grid.arrange(
+  p_pca, p_tsne, p_umap,
+  ncol = 3,
+  top  = "Perbandingan: PCA vs t-SNE vs UMAP"
+)
+```
+
+---
+
+## LDA (Linear Discriminant Analysis)
+
+### Konsep
+
+**LDA** adalah teknik dimensionality reduction yang **supervised** — memanfaatkan informasi label kelas untuk memaksimalkan separasi antar kelas.
+
+```{r lda}
+library(MASS)
+
+# LDA memerlukan label kelas
+df_lda_input <- df_num %>%
+  mutate(
+    perf_group = as.factor(ifelse(performance_score > median(performance_score), "High", "Low"))
+  )
+
+lda_result <- lda(
+  perf_group ~ age + salary + years_experience,
+  data = df_lda_input
+)
+
+# Proyeksi ke LDA space
+lda_scores <- predict(lda_result)$x
+
+df_lda_plot <- data.frame(
+  LD1        = lda_scores[, 1],
+  perf_group = df_lda_input$perf_group
+)
+
+ggplot(df_lda_plot, aes(x = LD1, fill = perf_group)) +
+  geom_density(alpha = 0.6) +
+  labs(
+    title = "LDA: Separasi Kelas Performa",
+    x     = "Linear Discriminant 1",
+    y     = "Densitas",
+    fill  = "Kelas"
+  ) +
+  theme_minimal()
+```
+
+---
+
+# Diskretisasi (Discretization)
+
+## Konsep
+
+**Diskretisasi** adalah proses mengubah variabel **kontinu** menjadi **kategorikal** (bin/interval). Berguna ketika:
+
+- Algoritma memerlukan input kategorikal
+- Ingin mengurangi noise dalam data
+- Membantu interpretasi dengan pembagian yang lebih jelas
+
+## Equal-Width Binning
+
+```{r discretize-width}
+# Bagi rentang nilai menjadi n bin dengan lebar yang sama
+df_disc <- df %>%
+  mutate(
+    salary_bin_ew = cut(
+      salary,
+      breaks = 4,  # 4 bin dengan lebar sama
+      labels = c("Sangat Rendah", "Rendah", "Tinggi", "Sangat Tinggi"),
+      include.lowest = TRUE
+    )
+  )
+
+cat("Distribusi Equal-Width Binning (Salary):\n")
+table(df_disc$salary_bin_ew)
+```
+
+## Equal-Frequency Binning (Quantile-based)
+
+```{r discretize-freq}
+# Bagi data menjadi n bin dengan jumlah observasi yang sama
+df_disc <- df_disc %>%
+  mutate(
+    salary_bin_ef = cut(
+      salary,
+      breaks  = quantile(salary, probs = seq(0, 1, 0.25), na.rm = TRUE),
+      labels  = c("Q1 (Bawah)", "Q2", "Q3", "Q4 (Atas)"),
+      include.lowest = TRUE
+    )
+  )
+
+cat("Distribusi Equal-Frequency Binning (Salary):\n")
+table(df_disc$salary_bin_ef)
+```
+
+```{r disc-compare, fig.cap="Perbandingan distribusi binning equal-width vs equal-frequency"}
+p1 <- ggplot(df_disc, aes(x = salary_bin_ew, fill = salary_bin_ew)) +
+  geom_bar(alpha = 0.85) +
+  labs(title = "Equal-Width Binning", x = NULL, y = "Frekuensi") +
+  theme_minimal() + theme(legend.position = "none",
+    axis.text.x = element_text(angle = 25, hjust = 1))
+
+p2 <- ggplot(df_disc, aes(x = salary_bin_ef, fill = salary_bin_ef)) +
+  geom_bar(alpha = 0.85) +
+  labs(title = "Equal-Frequency Binning", x = NULL, y = "Frekuensi") +
+  theme_minimal() + theme(legend.position = "none",
+    axis.text.x = element_text(angle = 25, hjust = 1))
+
+gridExtra::grid.arrange(p1, p2, ncol = 2,
+  top = "Perbandingan Metode Diskretisasi Salary")
+```
+
+## Custom Binning Berdasarkan Domain Knowledge
+
+```{r disc-custom}
+df_disc <- df_disc %>%
+  mutate(
+    # Diskretisasi usia berdasarkan kelompok karir
+    age_group = case_when(
+      age < 25              ~ "Pemula (< 25)",
+      age >= 25 & age < 35  ~ "Berkembang (25-34)",
+      age >= 35 & age < 45  ~ "Matang (35-44)",
+      age >= 45             ~ "Senior (≥ 45)"
+    ),
+    # Diskretisasi performa
+    perf_level = case_when(
+      performance_score < 60 ~ "Butuh Perbaikan",
+      performance_score < 75 ~ "Memenuhi Harapan",
+      performance_score < 90 ~ "Melebihi Harapan",
+      TRUE                   ~ "Luar Biasa"
+    )
+  )
+
+cat("Distribusi kelompok usia:\n")
+table(df_disc$age_group)
+
+cat("\nDistribusi level performa:\n")
+table(df_disc$perf_level)
+```
+
+```{r disc-vis, fig.cap="Distribusi karyawan berdasarkan kelompok usia dan level performa"}
+df_disc %>%
+  count(age_group, perf_level) %>%
+  ggplot(aes(x = age_group, y = n, fill = perf_level)) +
+  geom_col(position = "dodge", alpha = 0.85) +
+  labs(
+    title = "Distribusi Level Performa per Kelompok Usia",
+    x     = "Kelompok Usia",
+    y     = "Jumlah Karyawan",
+    fill  = "Level Performa"
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 15, hjust = 1))
+```
+
+---
+
+# Numerosity Reduction
+
+## Sampling
+
+```{r sampling}
+set.seed(42)
+
+# Random Sampling
+df_sample_random <- df %>% sample_frac(0.5)  # 50% data
+
+# Stratified Sampling berdasarkan department
+df_sample_strat <- df %>%
+  group_by(department) %>%
+  sample_frac(0.5) %>%
+  ungroup()
+
+cat("Ukuran data asli            :", nrow(df), "\n")
+cat("Setelah random sampling     :", nrow(df_sample_random), "\n")
+cat("Setelah stratified sampling :", nrow(df_sample_strat), "\n")
+
+# Cek proporsi departemen terjaga
+cat("\nProporsi dept — asli:\n")
+round(prop.table(table(df$department)), 3)
+
+cat("\nProporsi dept — stratified:\n")
+round(prop.table(table(df_sample_strat$department)), 3)
+```
+
+---
+
+# Ringkasan dan Rekomendasi
+
+```{r summary-table}
+# Tabel rekomendasi teknik
+rekomendasi <- data.frame(
+  Teknik            = c("PCA", "t-SNE", "UMAP", "LDA",
+                        "Correlation Filter", "RFE", "Boruta", "LASSO",
+                        "Equal-Width Bin", "Equal-Freq Bin"),
+  Jenis             = c("Dim Reduc", "Dim Reduc", "Dim Reduc", "Dim Reduc",
+                        "Feature Sel", "Feature Sel", "Feature Sel", "Feature Sel",
+                        "Diskretisasi", "Diskretisasi"),
+  Supervised        = c("Tidak", "Tidak", "Tidak", "Ya",
+                        "Tidak", "Ya", "Ya", "Ya",
+                        "Tidak", "Tidak"),
+  Cocok_Untuk       = c("Preprocessing, Visualisasi",
+                        "Visualisasi saja",
+                        "Visualisasi, Clustering",
+                        "Klasifikasi",
+                        "Preprocessing cepat",
+                        "Model ML apa saja",
+                        "Random Forest, Tree",
+                        "Regresi linear",
+                        "Data seragam",
+                        "Data skewed"),
+  stringsAsFactors  = FALSE
+)
+
+knitr::kable(rekomendasi, caption = "Panduan Pemilihan Teknik Data Reduction")
+```
+
+---
+
+# Kesimpulan
+
+Dalam modul ini, kita telah mempelajari tiga kategori besar **Data Reduction**:
+
+### Feature Selection
+1. **Correlation Filter** — Hapus fitur dengan korelasi tinggi menggunakan matriks korelasi dan VIF
+2. **RFE** — Eliminasi fitur rekursif berbasis performa model
+3. **Boruta** — Seleksi fitur berbasis Random Forest
+4. **LASSO** — Regularisasi yang secara otomatis meng-zero-kan koefisien fitur tidak penting
+
+### Dimensionality Reduction
+5. **PCA** — Transformasi linear, cocok untuk preprocessing dan visualisasi awal
+6. **t-SNE** — Non-linear, terbaik untuk visualisasi cluster 2D
+7. **UMAP** — Non-linear, lebih cepat dari t-SNE, mempertahankan struktur global
+8. **LDA** — Supervised, memaksimalkan separasi kelas
+
+### Diskretisasi
+9. **Equal-Width Binning** — Lebar bin seragam, mudah dipahami
+10. **Equal-Frequency Binning** — Frekuensi per bin seragam, lebih robust
+11. **Custom Binning** — Berdasarkan domain knowledge
+
+> ✅ Kamu telah menyelesaikan seluruh modul **Data Pre-Processing in R**!
