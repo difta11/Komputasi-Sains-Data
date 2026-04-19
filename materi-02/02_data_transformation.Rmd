@@ -1,0 +1,436 @@
+---
+title: "Modul 02 — Data Transformation"
+author: "Data Pre-Processing in R"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 8,
+  fig.height = 5,
+  fig.path   = "../figures/"
+)
+```
+
+---
+
+# Pendahuluan
+
+**Data Transformation** adalah proses mengubah format, skala, atau struktur data agar lebih sesuai untuk analisis dan pemodelan. Transformasi yang tepat dapat:
+
+- Meningkatkan performa model machine learning
+- Membuat distribusi data lebih normal
+- Membuat fitur-fitur komparable satu sama lain
+- Membantu algoritma yang sensitif terhadap skala
+
+---
+
+# Load Library dan Data
+
+```{r load}
+library(tidyverse)
+library(caret)
+library(recipes)
+library(scales)
+library(GGally)
+```
+
+```{r load-data}
+# Gunakan data hasil cleaning dari Modul 01
+df <- read.csv("../data/clean_data.csv", stringsAsFactors = FALSE)
+
+# Konversi ulang tipe data
+df <- df %>%
+  mutate(
+    department = as.factor(department),
+    city       = as.factor(city)
+  )
+
+cat("Dimensi data:", dim(df)[1], "x", dim(df)[2], "\n")
+head(df)
+```
+
+---
+
+# Normalisasi (Min-Max Scaling)
+
+## Konsep
+
+**Normalisasi** mengubah nilai numerik ke rentang [0, 1] menggunakan formula:
+
+$$x_{norm} = \frac{x - x_{min}}{x_{max} - x_{min}}$$
+
+Cocok digunakan ketika distribusi data **tidak diketahui** atau untuk algoritma seperti K-NN dan Neural Networks.
+
+```{r normalize}
+# Fungsi normalisasi manual
+normalize <- function(x) {
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+# Terapkan pada kolom numerik
+df_norm <- df %>%
+  mutate(
+    age_norm               = normalize(age),
+    salary_norm            = normalize(salary),
+    performance_score_norm = normalize(performance_score),
+    years_experience_norm  = normalize(years_experience)
+  )
+
+# Rangkuman hasil
+df_norm %>%
+  select(ends_with("_norm")) %>%
+  summary()
+```
+
+```{r normalize-vis, fig.cap="Perbandingan distribusi sebelum dan sesudah normalisasi"}
+par(mfrow = c(1, 2))
+
+p1 <- ggplot(df, aes(x = salary)) +
+  geom_histogram(bins = 25, fill = "#3498DB", alpha = 0.8) +
+  labs(title = "Salary — Asli", x = "Salary (Rp)", y = "Frekuensi") +
+  theme_minimal()
+
+p2 <- ggplot(df_norm, aes(x = salary_norm)) +
+  geom_histogram(bins = 25, fill = "#E67E22", alpha = 0.8) +
+  labs(title = "Salary — Setelah Normalisasi", x = "Nilai [0, 1]", y = "Frekuensi") +
+  theme_minimal()
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+---
+
+# Standardisasi (Z-score Scaling)
+
+## Konsep
+
+**Standardisasi** mengubah data sehingga memiliki **mean = 0** dan **standar deviasi = 1**:
+
+$$x_{std} = \frac{x - \mu}{\sigma}$$
+
+Cocok untuk algoritma yang mengasumsikan distribusi normal seperti Linear Regression, Logistic Regression, SVM, dan PCA.
+
+```{r standardize}
+# Standardisasi dengan scale()
+df_std <- df %>%
+  mutate(
+    age_std               = as.vector(scale(age)),
+    salary_std            = as.vector(scale(salary)),
+    performance_score_std = as.vector(scale(performance_score)),
+    years_experience_std  = as.vector(scale(years_experience))
+  )
+
+# Verifikasi: mean ≈ 0, sd ≈ 1
+df_std %>%
+  select(ends_with("_std")) %>%
+  summarise(across(everything(), list(mean = mean, sd = sd), na.rm = TRUE)) %>%
+  pivot_longer(everything()) %>%
+  mutate(value = round(value, 6))
+```
+
+```{r std-compare, fig.cap="Distribusi salary sebelum dan sesudah standardisasi"}
+p1 <- ggplot(df, aes(x = salary)) +
+  geom_density(fill = "#9B59B6", alpha = 0.6) +
+  geom_vline(xintercept = mean(df$salary), color = "red", linetype = "dashed") +
+  labs(title = "Sebelum Standardisasi", x = "Salary") +
+  theme_minimal()
+
+p2 <- ggplot(df_std, aes(x = salary_std)) +
+  geom_density(fill = "#1ABC9C", alpha = 0.6) +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Setelah Standardisasi (Z-score)", x = "Z-score") +
+  theme_minimal()
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+---
+
+# Robust Scaling
+
+## Konsep
+
+**Robust Scaling** menggunakan **median** dan **IQR** sebagai pengganti mean dan std, sehingga lebih tahan terhadap outlier:
+
+$$x_{robust} = \frac{x - Q_2}{Q_3 - Q_1}$$
+
+```{r robust-scale}
+robust_scale <- function(x) {
+  med <- median(x, na.rm = TRUE)
+  iqr <- IQR(x, na.rm = TRUE)
+  (x - med) / iqr
+}
+
+df_robust <- df %>%
+  mutate(
+    salary_robust = robust_scale(salary),
+    age_robust    = robust_scale(age)
+  )
+
+cat("Median salary robust:", round(median(df_robust$salary_robust, na.rm = TRUE), 4), "\n")
+cat("IQR salary robust   :", round(IQR(df_robust$salary_robust, na.rm = TRUE), 4), "\n")
+```
+
+---
+
+# Transformasi Logaritmik
+
+## Konsep
+
+**Log Transform** digunakan untuk data yang memiliki distribusi **right-skewed** (menceng ke kanan). Transformasi ini membantu mendekati distribusi normal.
+
+$$x_{log} = \log(x + 1)$$
+
+(+1 untuk menghindari log(0))
+
+```{r log-transform}
+df_log <- df %>%
+  mutate(
+    salary_log = log1p(salary),
+    salary_sqrt = sqrt(salary)
+  )
+
+# Skewness sebelum dan sesudah
+library(moments)
+cat("Skewness salary asli      :", round(skewness(df$salary, na.rm = TRUE), 4), "\n")
+cat("Skewness salary log       :", round(skewness(df_log$salary_log, na.rm = TRUE), 4), "\n")
+cat("Skewness salary sqrt      :", round(skewness(df_log$salary_sqrt, na.rm = TRUE), 4), "\n")
+```
+
+```{r log-vis, fig.cap="Efek transformasi logaritmik pada distribusi salary"}
+p1 <- ggplot(df, aes(x = salary)) +
+  geom_histogram(bins = 30, fill = "#E74C3C", alpha = 0.8) +
+  labs(title = "Original", x = "Salary") + theme_minimal()
+
+p2 <- ggplot(df_log, aes(x = salary_log)) +
+  geom_histogram(bins = 30, fill = "#2ECC71", alpha = 0.8) +
+  labs(title = "Log Transform", x = "log(1 + Salary)") + theme_minimal()
+
+p3 <- ggplot(df_log, aes(x = salary_sqrt)) +
+  geom_histogram(bins = 30, fill = "#3498DB", alpha = 0.8) +
+  labs(title = "Sqrt Transform", x = "sqrt(Salary)") + theme_minimal()
+
+gridExtra::grid.arrange(p1, p2, p3, ncol = 3)
+```
+
+---
+
+# Encoding Variabel Kategorikal
+
+## Konsep
+
+Sebagian besar algoritma machine learning hanya menerima input numerik. Oleh karena itu, variabel kategorikal perlu dikonversi menjadi angka — proses ini disebut **encoding**.
+
+## Label Encoding
+
+```{r label-encode}
+# Label Encoding: setiap kategori diberi angka unik
+df_label <- df %>%
+  mutate(
+    department_label = as.integer(as.factor(department)),
+    city_label       = as.integer(as.factor(city))
+  )
+
+# Lihat mapping
+cat("Mapping Department:\n")
+df_label %>%
+  distinct(department, department_label) %>%
+  arrange(department_label) %>%
+  print()
+```
+
+> ⚠️ **Perhatian:** Label encoding mengimplikasikan urutan (HR=1 < IT=2 < ...) yang bisa menyesatkan model. Gunakan hanya untuk variabel ordinal atau algoritma berbasis pohon.
+
+## One-Hot Encoding
+
+```{r onehot-encode}
+# One-Hot Encoding dengan model.matrix
+dummy_dept <- model.matrix(~ department - 1, data = df)
+dummy_city <- model.matrix(~ city - 1, data = df)
+
+cat("Kolom One-Hot Department:\n")
+colnames(dummy_dept)
+
+# Gabungkan ke dataframe
+df_ohe <- bind_cols(
+  df %>% select(-department, -city),
+  as.data.frame(dummy_dept),
+  as.data.frame(dummy_city)
+)
+
+cat("\nDimensi setelah OHE:", dim(df_ohe)[1], "x", dim(df_ohe)[2], "\n")
+```
+
+```{r ohe-vis, fig.cap="Distribusi kategori departemen setelah One-Hot Encoding"}
+as.data.frame(dummy_dept) %>%
+  colSums() %>%
+  as.data.frame() %>%
+  rownames_to_column("department") %>%
+  rename(count = ".") %>%
+  mutate(department = str_replace(department, "department", "")) %>%
+  ggplot(aes(x = reorder(department, count), y = count, fill = department)) +
+  geom_col(alpha = 0.85) +
+  coord_flip() +
+  labs(
+    title = "Distribusi Departemen (One-Hot Encoding)",
+    x     = "Departemen",
+    y     = "Jumlah"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Ordinal Encoding
+
+```{r ordinal-encode}
+# Ordinal Encoding: untuk variabel dengan urutan bermakna
+# Contoh: membuat kategori gaji dengan urutan
+
+df_ordinal <- df %>%
+  mutate(
+    salary_category = case_when(
+      salary < 7000000  ~ "Rendah",
+      salary < 15000000 ~ "Sedang",
+      TRUE              ~ "Tinggi"
+    ),
+    salary_ordinal = case_when(
+      salary_category == "Rendah" ~ 1,
+      salary_category == "Sedang" ~ 2,
+      salary_category == "Tinggi" ~ 3
+    )
+  )
+
+table(df_ordinal$salary_category)
+```
+
+## Target Encoding (Mean Encoding)
+
+```{r target-encode}
+# Target Encoding: ganti kategori dengan rata-rata target variable
+target_enc <- df %>%
+  group_by(department) %>%
+  summarise(dept_mean_salary = mean(salary, na.rm = TRUE), .groups = "drop")
+
+df_target <- df %>%
+  left_join(target_enc, by = "department")
+
+cat("Target encoding departemen:\n")
+target_enc %>% arrange(desc(dept_mean_salary)) %>% print()
+```
+
+---
+
+# Feature Engineering
+
+## Membuat Fitur Baru
+
+```{r feature-eng}
+df_fe <- df %>%
+  mutate(
+    # Rasio pengalaman per usia
+    exp_ratio          = years_experience / age,
+    # Salary per tahun pengalaman
+    salary_per_exp     = salary / (years_experience + 1),
+    # Kategori usia
+    age_group          = case_when(
+      age < 30 ~ "Junior",
+      age < 45 ~ "Mid-career",
+      TRUE     ~ "Senior"
+    ),
+    # Apakah performa di atas rata-rata?
+    high_performer     = performance_score > mean(performance_score, na.rm = TRUE)
+  )
+
+cat("Fitur baru yang ditambahkan:\n")
+names(df_fe)[!(names(df_fe) %in% names(df))]
+```
+
+---
+
+# Transformasi Distribusi (Box-Cox & Yeo-Johnson)
+
+```{r boxcox}
+library(MASS)
+
+# Box-Cox transformation (hanya untuk nilai positif)
+bc_result <- boxcox(salary ~ 1, data = df, plotit = FALSE)
+lambda_optimal <- bc_result$x[which.max(bc_result$y)]
+cat("Lambda optimal Box-Cox:", round(lambda_optimal, 4), "\n")
+
+# Terapkan transformasi
+df_bc <- df %>%
+  mutate(
+    salary_boxcox = if (abs(lambda_optimal) < 0.001) {
+      log(salary)
+    } else {
+      (salary^lambda_optimal - 1) / lambda_optimal
+    }
+  )
+
+cat("Skewness sebelum Box-Cox:", round(moments::skewness(df$salary), 4), "\n")
+cat("Skewness setelah Box-Cox:", round(moments::skewness(df_bc$salary_boxcox), 4), "\n")
+```
+
+---
+
+# Pipeline Transformasi dengan `recipes`
+
+## Konsep
+
+Package `recipes` (bagian dari `tidymodels`) menyediakan cara yang **reproducible** dan **sistematis** untuk mendefinisikan langkah-langkah transformasi.
+
+```{r recipes-pipeline}
+library(recipes)
+
+# Definisi recipe
+rec <- recipe(performance_score ~ ., data = df) %>%
+  # Hapus kolom non-prediktif
+  step_rm(id, name) %>%
+  # Imputasi median untuk numerik
+  step_impute_median(all_numeric_predictors()) %>%
+  # Standardisasi semua numerik
+  step_normalize(all_numeric_predictors()) %>%
+  # One-hot encoding untuk kategorikal
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%
+  # Hapus kolom dengan zero variance
+  step_zv(all_predictors())
+
+# Persiapkan dan terapkan recipe
+rec_prep  <- prep(rec, training = df)
+df_baked  <- bake(rec_prep, new_data = df)
+
+cat("Dimensi setelah recipe pipeline:", dim(df_baked)[1], "x", dim(df_baked)[2], "\n")
+head(df_baked, 3)
+```
+
+---
+
+# Kesimpulan
+
+Dalam modul ini, kita telah mempelajari berbagai teknik **Data Transformation**:
+
+1. **Normalisasi (Min-Max)** — Skala ke [0,1], cocok untuk K-NN dan Neural Network
+2. **Standardisasi (Z-score)** — Mean=0, SD=1, cocok untuk PCA, SVM, Regresi
+3. **Robust Scaling** — Menggunakan median/IQR, tahan outlier
+4. **Log & Sqrt Transform** — Mengatasi distribusi right-skewed
+5. **Label Encoding** — Untuk variabel ordinal atau tree-based model
+6. **One-Hot Encoding** — Untuk variabel nominal tanpa urutan
+7. **Target Encoding** — Menggantikan kategori dengan statistik target
+8. **Feature Engineering** — Membuat fitur baru dari kombinasi fitur yang ada
+9. **Box-Cox** — Transformasi optimal untuk mendekati distribusi normal
+10. **recipes Pipeline** — Cara sistematis dan reproducible menerapkan transformasi
+
+> Lanjutkan ke **Modul 03: Data Reduction** ➜
