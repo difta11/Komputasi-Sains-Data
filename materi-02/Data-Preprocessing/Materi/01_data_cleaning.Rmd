@@ -130,7 +130,7 @@ cat("Jumlah baris sesudah:", nrow(df_no_na), "\n")
 cat("Baris yang dihapus  :", nrow(df_raw) - nrow(df_no_na), "\n")
 ```
 
-> ⚠️ **Catatan:** Metode ini hanya disarankan bila persentase missing sangat kecil (< 5%) dan data hilang secara MCAR.
+> **Catatan:** Metode ini hanya disarankan bila persentase missing sangat kecil (< 5%) dan data hilang secara MCAR.
 
 ### Metode 2: Imputasi dengan Mean / Median / Modus
 
@@ -467,9 +467,9 @@ validasi_data <- function(df) {
   if (exp_invalid > 0) masalah$exp <- paste(exp_invalid, "data pengalaman > usia - 18")
 
   if (length(masalah) == 0) {
-    cat("✅ Semua validasi lolos!\n")
+    cat("Semua validasi lolos!\n")
   } else {
-    cat("⚠️ Masalah ditemukan:\n")
+    cat("Masalah ditemukan:\n")
     for (nm in names(masalah)) cat(" -", masalah[[nm]], "\n")
   }
 }
@@ -496,7 +496,7 @@ cat("Duplikat          :", sum(duplicated(df_clean)), "\n")
 ```{r save-clean}
 # Simpan data bersih
 write.csv(df_clean, "../data/clean_data.csv", row.names = FALSE)
-cat("✅ Data bersih disimpan ke data/clean_data.csv\n")
+cat("Data bersih disimpan ke data/clean_data.csv\n")
 ```
 
 ---
