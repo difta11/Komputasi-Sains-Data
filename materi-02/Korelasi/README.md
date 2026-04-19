@@ -1,29 +1,25 @@
-# 📊 Korelasi dalam Analisis Data
-
-> **Komputasi Sains Data** — Materi Korelasi  
+# Korelasi dalam Analisis Data
 > Memahami hubungan antar variabel menggunakan metode statistik dan visualisasi
 
 ---
 
-## 📌 Deskripsi
+Korelasi/
+├── README.md                  # Dokumentasi materi (file ini)
+├── korelasi.Rmd               # Notebook R Markdown utama
+├── data/
+│   └── clean_data.csv         # Dataset karyawan
+└── output/
+    └── korelasi_analisis.html ← Hasil knit Rmd
+
+---
+
+## Deskripsi
 
 Korelasi adalah ukuran statistik yang menggambarkan sejauh mana dua variabel bergerak bersama. Analisis korelasi digunakan untuk mengidentifikasi hubungan antar fitur dalam dataset, yang merupakan langkah penting sebelum membangun model machine learning.
 
 ---
 
-## 🎯 Tujuan Pembelajaran
-
-Setelah mempelajari materi ini, mahasiswa diharapkan mampu:
-
-- ✅ Memahami konsep korelasi dan interpretasinya
-- ✅ Membedakan jenis-jenis korelasi (Pearson, Spearman, Kendall)
-- ✅ Menghitung nilai korelasi menggunakan Python
-- ✅ Membuat dan membaca heatmap korelasi
-- ✅ Mengidentifikasi multikolinearitas dalam dataset
-
----
-
-## 📚 Materi
+## Materi
 
 ### 1. Apa itu Korelasi?
 
@@ -43,171 +39,107 @@ Korelasi mengukur **kekuatan** dan **arah** hubungan linear antara dua variabel 
 
 ### 2. Jenis-Jenis Korelasi
 
-#### 🔵 Pearson Correlation
-- Mengukur hubungan **linear** antara dua variabel kontinu
-- Asumsi: data berdistribusi normal
-- Rumus:
+#### Pearson Correlation
+Mengukur hubungan **linear** antara dua variabel kontinu.
 
-$$r = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \cdot \sum (y_i - \bar{y})^2}}$$
+$$r = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2 \cdot \sum_{i=1}^{n}(y_i - \bar{y})^2}}$$
 
-#### 🟠 Spearman Correlation
-- Mengukur hubungan **monoton** (tidak harus linear)
-- Berbasis **rank** (peringkat), cocok untuk data ordinal
-- Lebih robust terhadap outlier
+**Asumsi:**
+- Data berdistribusi **normal**
+- Hubungan antar variabel bersifat **linear**
+- Tidak ada **outlier** ekstrem
 
-#### 🟢 Kendall Tau
-- Mengukur **konsistensi urutan** antara dua variabel
-- Lebih konservatif dari Spearman, cocok untuk dataset kecil
+---
+
+#### Spearman Correlation
+Mengukur hubungan **monoton** berbasis **peringkat (rank)**, bukan nilai asli.
+
+$$\rho = 1 - \frac{6 \sum d_i^2}{n(n^2 - 1)}$$
+
+Di mana $d_i$ adalah selisih rank antara pasangan ke-$i$, dan $n$ adalah jumlah observasi.
+
+**Digunakan saat:**
+- Data berskala **ordinal**
+- Data **tidak berdistribusi normal**
+- Terdapat **outlier** dalam data
+
+---
+
+#### Kendall Tau
+Mengukur **konsistensi urutan** (concordance) antara dua variabel.
+
+$$\tau = \frac{C - D}{\frac{1}{2}n(n-1)}$$
+
+Di mana:
+- $C$ = jumlah pasangan **concordant** (urutan pasangan sama)
+- $D$ = jumlah pasangan **discordant** (urutan pasangan berbeda)
+
+**Kapan digunakan:**
+- Dataset **kecil**
+- Data mengandung banyak nilai sama (*ties*)
+- Ingin hasil yang lebih **konservatif** dari Spearman
 
 ---
 
 ### 3. Kapan Menggunakan Masing-Masing?
 
 ```
-Data kontinu, distribusi normal  →  Pearson
+Data kontinu, distribusi normal   →  Pearson
 Data ordinal / ada outlier        →  Spearman
 Dataset kecil, data ordinal       →  Kendall
 ```
 
 ---
+### 4. Uji Signifikansi
 
-## 💻 Implementasi Python
+Setiap nilai korelasi perlu diuji apakah **signifikan secara statistik**:
 
-### Setup Library
-
-```python
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy import stats
-```
-
-### Load Dataset
-
-```python
-# Contoh menggunakan dataset built-in
-df = pd.read_csv('data.csv')
-df.head()
-```
-
-### Pearson Correlation
-
-```python
-# Korelasi antar semua kolom numerik
-correlation_matrix = df.corr(method='pearson')
-print(correlation_matrix)
-
-# Korelasi antara dua variabel spesifik
-r, p_value = stats.pearsonr(df['variabel_x'], df['variabel_y'])
-print(f"Pearson r: {r:.4f}, p-value: {p_value:.4f}")
-```
-
-### Spearman Correlation
-
-```python
-rho, p_value = stats.spearmanr(df['variabel_x'], df['variabel_y'])
-print(f"Spearman rho: {rho:.4f}, p-value: {p_value:.4f}")
-```
-
-### Kendall Tau
-
-```python
-tau, p_value = stats.kendalltau(df['variabel_x'], df['variabel_y'])
-print(f"Kendall tau: {tau:.4f}, p-value: {p_value:.4f}")
-```
-
-### Visualisasi Heatmap
-
-```python
-plt.figure(figsize=(10, 8))
-sns.heatmap(
-    correlation_matrix,
-    annot=True,
-    fmt=".2f",
-    cmap='coolwarm',
-    center=0,
-    square=True,
-    linewidths=0.5
-)
-plt.title('Heatmap Korelasi Antar Variabel', fontsize=14)
-plt.tight_layout()
-plt.savefig('heatmap_korelasi.png', dpi=150)
-plt.show()
-```
-
-### Scatter Plot dengan Regresi
-
-```python
-sns.pairplot(df, kind='reg', diag_kind='kde')
-plt.suptitle('Pairplot dengan Garis Regresi', y=1.02)
-plt.show()
-```
+- **H₀**: tidak ada korelasi (r = 0)
+- **H₁**: ada korelasi (r ≠ 0)
+- Jika **p-value < 0.05** → korelasi signifikan ✅
+- Jika **p-value ≥ 0.05** → korelasi tidak signifikan ❌
 
 ---
 
-## 🔍 Interpretasi Hasil
-
-### Membaca Heatmap
-- Warna **merah** → korelasi positif tinggi
-- Warna **biru** → korelasi negatif tinggi
-- Warna **putih/netral** → tidak ada korelasi
-
-### Signifikansi Statistik
-- Jika **p-value < 0.05** → korelasi **signifikan** secara statistik
-- Jika **p-value ≥ 0.05** → korelasi **tidak signifikan**
-
-### ⚠️ Perhatian: Korelasi ≠ Kausalitas
-> *"Correlation does not imply causation"*  
-> Dua variabel yang berkorelasi tinggi tidak berarti satu menyebabkan yang lain.
-
 ---
+## Implementasi R
 
-## 🧪 Studi Kasus: Deteksi Multikolinearitas
+Analisis korelasi lengkap diimplementasikan dalam file R Markdown berikut:
 
-Multikolinearitas terjadi ketika dua atau lebih fitur **sangat berkorelasi** satu sama lain, yang dapat memengaruhi performa model regresi.
+📄 **[`korelasi.Rmd`](./korelasi.Rmd)**
 
-```python
-# Identifikasi fitur dengan korelasi > 0.85
-threshold = 0.85
-high_corr = (correlation_matrix.abs() > threshold) & (correlation_matrix != 1.0)
+### Library yang Digunakan
 
-# Tampilkan pasangan yang sangat berkorelasi
-pairs = [(col, row) for col in high_corr.columns
-         for row in high_corr.index if high_corr.loc[row, col]]
-print("Pasangan variabel dengan korelasi tinggi:")
-for pair in pairs:
-    print(f"  {pair[0]} ↔ {pair[1]}: {correlation_matrix.loc[pair[0], pair[1]]:.3f}")
+| Library | Fungsi |
+|---|---|
+| `tidyverse` | Manipulasi dan visualisasi data |
+| `corrplot` | Heatmap korelasi interaktif |
+| `ggcorrplot` | Heatmap korelasi berbasis ggplot2 |
+| `psych` | `pairs.panels()` untuk scatter plot matrix |
+
+### Cara Menjalankan
+
+```r
+# Install library jika belum ada
+install.packages(c("tidyverse", "corrplot", "ggcorrplot", "psych"))
+
+# Buka file Rmd di RStudio, lalu klik "Knit"
+# atau jalankan per chunk secara interaktif
 ```
 
----
+### Ringkasan Isi Notebook
 
-## 📁 Struktur Folder
-
-```
-Korelasi/
-├── README.md               ← Dokumentasi materi
-├── notebook/
-│   └── korelasi.ipynb      ← Jupyter Notebook utama
-├── data/
-│   └── dataset.csv         ← Dataset yang digunakan
-├── output/
-│   └── heatmap_korelasi.png
-└── src/
-    └── correlation_utils.py
-```
+| Bagian | Deskripsi |
+|---|---|
+| Load Data | Membaca `clean_data.csv` dan eksplorasi awal |
+| Pearson | Hitung korelasi + uji signifikansi |
+| Spearman | Hitung korelasi berbasis rank |
+| Kendall | Hitung tau dan interpretasi |
+| Perbandingan | Tabel perbandingan ketiga metode |
+| Visualisasi | Heatmap, scatter plot, pairs panel |
+| Uji Normalitas | Shapiro-Wilk test sebagai syarat Pearson |
+| Kesimpulan | Ringkasan korelasi tiap variabel dengan salary |
 
 ---
 
-## 📖 Referensi
 
-- [Pandas Documentation — DataFrame.corr()](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.corr.html)
-- [SciPy Stats — Correlation Functions](https://docs.scipy.org/doc/scipy/reference/stats.html)
-- [Seaborn — Heatmap](https://seaborn.pydata.org/generated/seaborn.heatmap.html)
-- Montgomery, D.C. & Runger, G.C. (2014). *Applied Statistics and Probability for Engineers*. Wiley.
-
----
-
-<div align="center">
-  <sub>Komputasi Sains Data · Materi Korelasi</sub>
-</div>
