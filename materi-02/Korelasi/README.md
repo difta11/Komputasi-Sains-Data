@@ -6,10 +6,9 @@
 Korelasi/
 ├── README.md                  # Dokumentasi materi 
 ├── korelasi.Rmd               # Notebook R Markdown utama
-├── data/
-│   └── clean_data.csv         # Dataset karyawan
-└── output/
-    └── korelasi_analisis.html ← Hasil knit Rmd
+├── clean_data.csv             # Dataset yang digunakan
+└── korelasi.html              # Hasil knit Rmd
+ 
 ```
 ---
 
