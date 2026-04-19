@@ -1,0 +1,515 @@
+---
+title: "Modul 01 — Data Cleaning"
+author: "Data Pre-Processing in R"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 8,
+  fig.height = 5,
+  fig.path   = "../figures/"
+)
+```
+
+---
+
+# Pendahuluan
+
+**Data Cleaning** adalah proses mengidentifikasi dan memperbaiki atau menghapus rekaman yang korup, tidak akurat, atau tidak relevan dari dataset. Ini merupakan langkah **pertama dan terpenting** dalam pipeline data preprocessing.
+
+> *"Data scientists spend 60–80% of their time on data cleaning."*
+> — Berbagai survei industri
+
+Dataset yang kotor (*dirty data*) dapat menyebabkan:
+
+- Model machine learning yang tidak akurat
+- Kesimpulan analisis yang menyesatkan
+- Kegagalan sistem yang bergantung pada data tersebut
+
+---
+
+# Load Library dan Data
+
+```{r load-library}
+library(tidyverse)
+library(naniar)
+library(VIM)
+library(skimr)
+library(janitor)
+library(DataExplorer)
+library(outliers)
+```
+
+```{r load-data}
+# Load dataset mentah
+df_raw <- read.csv("../data/raw_data.csv", stringsAsFactors = FALSE)
+
+# Tampilkan 10 baris pertama
+head(df_raw, 10)
+```
+
+```{r overview}
+# Ringkasan cepat dataset
+cat("Dimensi data:", dim(df_raw)[1], "baris x", dim(df_raw)[2], "kolom\n")
+cat("Tipe kolom:\n")
+str(df_raw)
+```
+
+```{r skim}
+# Ringkasan statistik lengkap
+skim(df_raw)
+```
+
+---
+
+# Missing Values (Nilai Hilang)
+
+## Konsep
+
+**Missing values** adalah data yang tidak tersedia untuk suatu observasi. Dalam R, nilai hilang direpresentasikan sebagai `NA`. Ada tiga jenis missing data:
+
+- **MCAR** (Missing Completely At Random): Kehilangan data tidak terkait dengan variabel apapun.
+- **MAR** (Missing At Random): Kehilangan data terkait dengan variabel lain yang terobservasi.
+- **MNAR** (Missing Not At Random): Kehilangan data terkait dengan nilai itu sendiri.
+
+## Deteksi Missing Values
+
+```{r missing-detect}
+# Hitung missing values per kolom
+missing_summary <- df_raw %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "kolom", values_to = "jumlah_na") %>%
+  mutate(persen_na = round(jumlah_na / nrow(df_raw) * 100, 2)) %>%
+  arrange(desc(jumlah_na))
+
+print(missing_summary)
+```
+
+```{r missing-vis, fig.cap="Visualisasi pola missing values per kolom"}
+# Visualisasi missing values
+gg_miss_var(df_raw, show_pct = TRUE) +
+  labs(
+    title    = "Persentase Missing Values per Variabel",
+    subtitle = "Menggunakan package naniar",
+    x        = "Persentase (%)",
+    y        = "Variabel"
+  ) +
+  theme_minimal()
+```
+
+```{r missing-heatmap, fig.cap="Heatmap pola missing values antar observasi"}
+# Heatmap missing values
+vis_miss(df_raw) +
+  labs(title = "Pola Missing Values dalam Dataset") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Penanganan Missing Values
+
+### Metode 1: Hapus Baris dengan NA (Listwise Deletion)
+
+```{r missing-drop}
+# Hapus semua baris yang mengandung NA
+df_no_na <- df_raw %>% drop_na()
+
+cat("Jumlah baris sebelum:", nrow(df_raw), "\n")
+cat("Jumlah baris sesudah:", nrow(df_no_na), "\n")
+cat("Baris yang dihapus  :", nrow(df_raw) - nrow(df_no_na), "\n")
+```
+
+> ⚠️ **Catatan:** Metode ini hanya disarankan bila persentase missing sangat kecil (< 5%) dan data hilang secara MCAR.
+
+### Metode 2: Imputasi dengan Mean / Median / Modus
+
+```{r missing-impute}
+df_imputed <- df_raw
+
+# Imputasi numerik dengan median (lebih robust terhadap outlier)
+df_imputed$age <- ifelse(
+  is.na(df_imputed$age),
+  median(df_imputed$age, na.rm = TRUE),
+  df_imputed$age
+)
+
+df_imputed$salary <- ifelse(
+  is.na(df_imputed$salary),
+  median(df_imputed$salary, na.rm = TRUE),
+  df_imputed$salary
+)
+
+df_imputed$performance_score <- ifelse(
+  is.na(df_imputed$performance_score),
+  median(df_imputed$performance_score, na.rm = TRUE),
+  df_imputed$performance_score
+)
+
+# Verifikasi hasil
+cat("Missing values tersisa:\n")
+colSums(is.na(df_imputed))
+```
+
+### Metode 3: Imputasi dengan MICE (Multiple Imputation)
+
+```{r missing-mice, eval=FALSE}
+# Metode lebih canggih: Multiple Imputation by Chained Equations
+library(mice)
+
+# Pilih hanya kolom numerik untuk imputasi
+df_numeric <- df_raw %>% select(age, salary, performance_score, years_experience)
+
+# Lakukan imputasi (m=5 dataset imputasi, method="pmm" = predictive mean matching)
+imputed_mice <- mice(df_numeric, m = 5, method = "pmm", seed = 42, printFlag = FALSE)
+
+# Ambil satu dataset hasil imputasi
+df_complete_mice <- complete(imputed_mice, 1)
+head(df_complete_mice)
+```
+
+---
+
+# Data Duplikat
+
+## Konsep
+
+**Data duplikat** adalah rekaman yang muncul lebih dari satu kali dalam dataset. Duplikat dapat menyebabkan:
+
+- Bias dalam analisis statistik
+- Overfitting pada model machine learning
+- Distorsi distribusi data
+
+## Deteksi Duplikat
+
+```{r duplicate-detect}
+# Hitung jumlah baris duplikat
+n_duplikat <- sum(duplicated(df_imputed))
+cat("Jumlah baris duplikat:", n_duplikat, "\n")
+
+# Tampilkan baris duplikat
+baris_duplikat <- df_imputed[duplicated(df_imputed), ]
+print(baris_duplikat)
+```
+
+```{r duplicate-check-col}
+# Cek duplikat berdasarkan kolom tertentu (misal: id)
+duplikat_id <- df_imputed %>%
+  group_by(id) %>%
+  filter(n() > 1) %>%
+  arrange(id)
+
+cat("Jumlah ID duplikat:", nrow(duplikat_id), "\n")
+```
+
+## Penghapusan Duplikat
+
+```{r duplicate-remove}
+# Hapus baris duplikat, pertahankan kemunculan pertama
+df_dedup <- df_imputed %>% distinct()
+
+cat("Baris sebelum deduplikasi:", nrow(df_imputed), "\n")
+cat("Baris setelah deduplikasi:", nrow(df_dedup), "\n")
+cat("Duplikat yang dihapus    :", nrow(df_imputed) - nrow(df_dedup), "\n")
+```
+
+```{r duplicate-partial}
+# Hapus duplikat berdasarkan subset kolom tertentu
+df_dedup_partial <- df_imputed %>%
+  distinct(name, department, city, .keep_all = TRUE)
+
+cat("Setelah deduplikasi parsial:", nrow(df_dedup_partial), "baris\n")
+```
+
+---
+
+# Outlier
+
+## Konsep
+
+**Outlier** adalah nilai yang secara signifikan berbeda dari nilai-nilai lain dalam distribusi data. Outlier dapat muncul karena:
+
+- Kesalahan input data
+- Kejadian luar biasa yang memang valid
+- Masalah pada sensor/alat pengukur
+
+## Deteksi Outlier
+
+### Metode IQR (Interquartile Range)
+
+```{r outlier-iqr}
+detect_outlier_iqr <- function(x) {
+  Q1  <- quantile(x, 0.25, na.rm = TRUE)
+  Q3  <- quantile(x, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  batas_bawah <- Q1 - 1.5 * IQR
+  batas_atas  <- Q3 + 1.5 * IQR
+  list(
+    batas_bawah = batas_bawah,
+    batas_atas  = batas_atas,
+    outlier     = x < batas_bawah | x > batas_atas
+  )
+}
+
+# Terapkan pada kolom salary
+hasil_iqr <- detect_outlier_iqr(df_dedup$salary)
+cat("Batas bawah salary:", format(hasil_iqr$batas_bawah, big.mark = ","), "\n")
+cat("Batas atas salary :", format(hasil_iqr$batas_atas,  big.mark = ","), "\n")
+cat("Jumlah outlier    :", sum(hasil_iqr$outlier, na.rm = TRUE), "\n")
+```
+
+```{r outlier-boxplot, fig.cap="Boxplot untuk deteksi outlier pada variabel numerik"}
+# Boxplot untuk semua variabel numerik
+df_dedup %>%
+  select(age, salary, performance_score, years_experience) %>%
+  pivot_longer(everything(), names_to = "variabel", values_to = "nilai") %>%
+  ggplot(aes(x = variabel, y = nilai, fill = variabel)) +
+  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.size = 2) +
+  facet_wrap(~variabel, scales = "free") +
+  labs(
+    title    = "Deteksi Outlier dengan Boxplot",
+    subtitle = "Titik merah = potential outlier",
+    x        = NULL, y = "Nilai"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+### Metode Z-Score
+
+```{r outlier-zscore}
+# Deteksi outlier dengan Z-score (|z| > 3 dianggap outlier)
+df_zscore <- df_dedup %>%
+  mutate(
+    z_salary = abs(scale(salary)),
+    z_age    = abs(scale(age)),
+    is_outlier_salary = z_salary > 3,
+    is_outlier_age    = z_age > 3
+  )
+
+cat("Outlier salary (Z-score > 3):", sum(df_zscore$is_outlier_salary, na.rm = TRUE), "\n")
+cat("Outlier age (Z-score > 3)   :", sum(df_zscore$is_outlier_age,    na.rm = TRUE), "\n")
+```
+
+## Penanganan Outlier
+
+```{r outlier-handle}
+# Metode 1: Hapus outlier
+df_no_outlier <- df_dedup %>%
+  filter(
+    salary >= hasil_iqr$batas_bawah,
+    salary <= hasil_iqr$batas_atas
+  )
+
+cat("Baris setelah hapus outlier salary:", nrow(df_no_outlier), "\n")
+
+# Metode 2: Winsorizing (cap pada batas IQR)
+df_winsorized <- df_dedup %>%
+  mutate(
+    salary = pmin(pmax(salary, hasil_iqr$batas_bawah), hasil_iqr$batas_atas)
+  )
+
+# Metode 3: Transformasi log (mereduksi pengaruh outlier)
+df_log <- df_dedup %>%
+  mutate(salary_log = log1p(salary))
+
+cat("Salary max sebelum log:", max(df_dedup$salary, na.rm = TRUE), "\n")
+cat("Salary max setelah log:", round(max(df_log$salary_log, na.rm = TRUE), 2), "\n")
+```
+
+```{r outlier-compare, fig.cap="Perbandingan distribusi salary sebelum dan sesudah winsorizing"}
+p1 <- ggplot(df_dedup, aes(x = salary)) +
+  geom_histogram(bins = 30, fill = "#E74C3C", alpha = 0.8) +
+  labs(title = "Sebelum Winsorizing", x = "Salary", y = "Frekuensi") +
+  theme_minimal()
+
+p2 <- ggplot(df_winsorized, aes(x = salary)) +
+  geom_histogram(bins = 30, fill = "#2ECC71", alpha = 0.8) +
+  labs(title = "Setelah Winsorizing", x = "Salary", y = "Frekuensi") +
+  theme_minimal()
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+---
+
+# Inkonsistensi Data
+
+## Konsep
+
+**Inkonsistensi data** terjadi ketika nilai-nilai dalam dataset tidak seragam dalam hal format atau penulisan. Contoh umum: "Jakarta", "jakarta", "JAKARTA" seharusnya merujuk pada entitas yang sama.
+
+## Deteksi Inkonsistensi
+
+```{r inconsistency-detect}
+# Cek variasi penulisan kota
+cat("Variasi nilai di kolom 'city':\n")
+table(df_no_outlier$city)
+```
+
+```{r inconsistency-dept}
+# Cek variasi departemen
+cat("Variasi nilai di kolom 'department':\n")
+table(df_no_outlier$department)
+```
+
+## Penanganan Inkonsistensi
+
+```{r inconsistency-fix}
+# Standardisasi teks: ubah ke title case dan hapus spasi
+df_clean <- df_no_outlier %>%
+  mutate(
+    # Standardisasi kota: Title Case
+    city = str_to_title(str_trim(city)),
+    # Standardisasi departemen: Title Case
+    department = str_to_title(str_trim(department)),
+    # Validasi: performance_score tidak boleh negatif
+    performance_score = ifelse(performance_score < 0, NA, performance_score),
+    # Validasi: usia harus realistis (18–80)
+    age = ifelse(age < 18 | age > 80, NA, age)
+  )
+
+# Imputasi NA baru dari validasi
+df_clean$performance_score[is.na(df_clean$performance_score)] <-
+  median(df_clean$performance_score, na.rm = TRUE)
+df_clean$age[is.na(df_clean$age)] <-
+  median(df_clean$age, na.rm = TRUE)
+
+# Cek hasil
+cat("Setelah perbaikan inkonsistensi:\n")
+table(df_clean$city)
+```
+
+---
+
+# Tipe Data yang Tidak Sesuai
+
+## Konsep
+
+Kolom dengan tipe data yang salah dapat menyebabkan error saat analisis. Misalnya kolom angka yang tersimpan sebagai karakter (*string*).
+
+```{r type-check}
+# Cek tipe data saat ini
+sapply(df_clean, class)
+```
+
+```{r type-fix}
+# Konversi tipe data yang diperlukan
+df_clean <- df_clean %>%
+  mutate(
+    id                 = as.integer(id),
+    age                = as.integer(age),
+    years_experience   = as.integer(years_experience),
+    department         = as.factor(department),
+    city               = as.factor(city)
+  )
+
+cat("Tipe data setelah konversi:\n")
+sapply(df_clean, class)
+```
+
+---
+
+# Penanganan Karakter Khusus dan Whitespace
+
+```{r whitespace}
+# Hapus whitespace tersembunyi di kolom teks
+df_clean <- df_clean %>%
+  mutate(
+    name = str_squish(str_trim(name))
+  )
+
+# Cek apakah ada nama dengan karakter non-alfabet
+nama_tidak_normal <- df_clean %>%
+  filter(str_detect(name, "[^A-Za-z ]")) %>%
+  select(id, name)
+
+if(nrow(nama_tidak_normal) == 0) {
+  cat("Tidak ada karakter tidak normal di kolom name.\n")
+} else {
+  print(nama_tidak_normal)
+}
+```
+
+---
+
+# Validasi Data (Data Validation)
+
+## Konsep
+
+Validasi data memastikan bahwa setiap nilai berada dalam rentang yang logis dan konsisten dengan aturan bisnis.
+
+```{r validation}
+# Fungsi validasi menyeluruh
+validasi_data <- function(df) {
+  masalah <- list()
+
+  # Cek usia
+  usia_invalid <- sum(df$age < 18 | df$age > 80, na.rm = TRUE)
+  if (usia_invalid > 0) masalah$usia <- paste(usia_invalid, "data usia di luar rentang 18-80")
+
+  # Cek skor performa
+  skor_invalid <- sum(df$performance_score < 0 | df$performance_score > 100, na.rm = TRUE)
+  if (skor_invalid > 0) masalah$skor <- paste(skor_invalid, "skor performa di luar rentang 0-100")
+
+  # Cek pengalaman vs usia
+  exp_invalid <- sum(df$years_experience > (df$age - 18), na.rm = TRUE)
+  if (exp_invalid > 0) masalah$exp <- paste(exp_invalid, "data pengalaman > usia - 18")
+
+  if (length(masalah) == 0) {
+    cat("✅ Semua validasi lolos!\n")
+  } else {
+    cat("⚠️ Masalah ditemukan:\n")
+    for (nm in names(masalah)) cat(" -", masalah[[nm]], "\n")
+  }
+}
+
+validasi_data(df_clean)
+```
+
+---
+
+# Rangkuman Proses Cleaning
+
+```{r summary-cleaning}
+cat("=== RINGKASAN DATA CLEANING ===\n")
+cat("Baris awal        :", nrow(df_raw), "\n")
+cat("Setelah imputasi  :", nrow(df_imputed), "\n")
+cat("Setelah dedup     :", nrow(df_dedup), "\n")
+cat("Setelah rm outlier:", nrow(df_no_outlier), "\n")
+cat("Setelah cleaning  :", nrow(df_clean), "\n")
+cat("\nKolom            :", ncol(df_clean), "\n")
+cat("Missing values    :", sum(is.na(df_clean)), "\n")
+cat("Duplikat          :", sum(duplicated(df_clean)), "\n")
+```
+
+```{r save-clean}
+# Simpan data bersih
+write.csv(df_clean, "../data/clean_data.csv", row.names = FALSE)
+cat("✅ Data bersih disimpan ke data/clean_data.csv\n")
+```
+
+---
+
+# Kesimpulan
+
+Dalam modul ini, kita telah mempelajari enam aspek utama **Data Cleaning**:
+
+1. **Missing Values** — Deteksi dengan `naniar`, penanganan dengan imputasi median atau MICE
+2. **Data Duplikat** — Identifikasi dengan `duplicated()`, hapus dengan `distinct()`
+3. **Outlier** — Deteksi IQR dan Z-score, penanganan dengan removal atau winsorizing
+4. **Inkonsistensi Data** — Standardisasi teks dengan `stringr`
+5. **Tipe Data** — Konversi ke tipe yang tepat dengan `mutate(as.*)`
+6. **Validasi Data** — Pengecekan logika bisnis dan rentang nilai yang valid
+
+> Data yang bersih adalah fondasi dari analisis yang dapat dipercaya. Lanjutkan ke **Modul 02: Data Transformation** ➜
