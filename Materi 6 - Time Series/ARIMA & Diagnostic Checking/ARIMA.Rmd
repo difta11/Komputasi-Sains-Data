@@ -1,0 +1,83 @@
+---
+title: "Analisis Time Series: AirPassengers dengan ARIMA"
+output: github_document
+---
+
+# Pendahuluan
+
+Dataset **AirPassengers** merupakan data jumlah penumpang pesawat bulanan dari tahun 1949 hingga 1960. Data ini memiliki pola tren dan musiman yang jelas.
+
+---
+
+# Persiapan Library
+
+```{r}
+if(!require(forecast)) install.packages("forecast")
+if(!require(tseries)) install.packages("tseries")
+
+library(forecast)
+library(tseries)
+
+data(AirPassengers)
+ts_data <- AirPassengers
+
+ts_data
+
+plot(ts_data,
+     main = "Time Series Plot: AirPassengers",
+     col  = "blue",
+     ylab = "Jumlah Penumpang",
+     xlab = "Tahun")
+
+adf.test(ts_data)
+
+ts_diff <- diff(ts_data)
+
+plot(ts_diff,
+     main = "Plot Differencing",
+     col = "red")
+
+adf.test(ts_diff)
+
+par(mfrow = c(1,2))
+
+acf(ts_diff, main = "ACF Differenced Data")
+pacf(ts_diff, main = "PACF Differenced Data")
+
+par(mfrow = c(1,1))
+
+model_manual <- arima(ts_data, order = c(1,1,1))
+summary(model_manual)
+
+model_auto <- auto.arima(ts_data)
+summary(model_auto)
+
+forecast_result <- forecast(model_auto, h = 12)
+
+plot(forecast_result,
+     main = "Forecast 12 Periode ke Depan")
+
+checkresiduals(model_auto)
+
+residuals_model <- residuals(model_auto)
+
+mean_res <- mean(residuals_model)
+var_res  <- var(residuals_model)
+
+mean_res
+var_res
+
+acf(residuals_model,
+    main = "ACF Residual")
+
+lb_test <- Box.test(residuals_model,
+                    lag = 20,
+                    type = "Ljung-Box")
+
+lb_test
+
+if(lb_test$p.value > 0.05){
+  cat("Residual bersifat white noise, model ARIMA sudah baik")
+} else {
+  cat("Residual belum white noise, model ARIMA belum optimal")
+}

@@ -1,0 +1,138 @@
+---
+
+title: "Analisis ACF dan PACF Manual"
+output: github_document
+-----------------------
+
+# Pendahuluan
+
+Dokumen ini membahas perhitungan **Autocorrelation Function (ACF)** dan **Partial Autocorrelation Function (PACF)** secara manual menggunakan bahasa R. Pendekatan ini membantu memahami konsep dasar tanpa bergantung pada fungsi bawaan.
+
+# Data Simulasi
+
+Data yang digunakan merupakan simulasi **random walk**.
+
+```{r}
+set.seed(42)
+x <- cumsum(rnorm(100))  # simulasi random walk
+```
+
+# Fungsi Mean dan Variansi Manual
+
+```{r}
+mean_manual <- function(v) {
+  sum(v) / length(v)
+}
+
+var_manual <- function(v) {
+  mu <- mean_manual(v)
+  sum((v - mu)^2) / (length(v) - 1)
+}
+
+mean_manual(x)
+var_manual(x)
+```
+
+# Perhitungan ACF Manual
+
+ACF mengukur korelasi antara data dengan lag sebelumnya.
+
+```{r}
+acf_manual <- function(x, max_lag = 20) {
+  n  <- length(x)
+  mu <- mean_manual(x)
+
+  gamma0 <- sum((x - mu)^2) / n
+
+  acf_vals <- numeric(max_lag + 1)
+  acf_vals[1] <- 1
+
+  for (k in 1:max_lag) {
+    gamma_k <- sum((x[(k+1):n] - mu) *
+                   (x[1:(n-k)] - mu)) / n
+    acf_vals[k + 1] <- gamma_k / gamma0
+  }
+  acf_vals
+}
+```
+
+# Perhitungan PACF Manual
+
+PACF mengukur korelasi parsial dengan menghilangkan pengaruh lag sebelumnya.
+
+```{r}
+pacf_manual <- function(x, max_lag = 20) {
+  acf_v    <- acf_manual(x, max_lag)
+  rho      <- acf_v[-1]
+  pacf_v   <- numeric(max_lag)
+  phi_prev <- numeric(0)
+
+  for (k in 1:max_lag) {
+    if (k == 1) {
+      phi_kk <- rho[1]
+    } else {
+      num <- rho[k] - sum(phi_prev * rho[(k-1):1])
+      den <- 1      - sum(phi_prev * rho[1:(k-1)])
+      phi_kk <- num / den
+
+      phi_prev <- phi_prev - phi_kk * rev(phi_prev)
+    }
+    pacf_v[k] <- phi_kk
+    phi_prev  <- c(phi_prev, phi_kk)
+  }
+  pacf_v
+}
+```
+
+# Fungsi Plot ACF dan PACF
+
+```{r}
+plot_corr <- function(vals, lags, title,
+                      ci = 1.96 / sqrt(length(x))) {
+
+  ylim <- c(min(c(vals, -ci)) - 0.05,
+            max(c(vals,  ci)) + 0.05)
+
+  plot(NA, xlim = c(0, max(lags)), ylim = ylim,
+       xlab = "Lag", ylab = "Korelasi",
+       main = title, las = 1)
+  abline(h = 0, col = "gray50")
+
+  abline(h = c(-ci, ci), lty = 2, col = "steelblue")
+
+  for (i in seq_along(lags)) {
+    segments(lags[i], 0, lags[i], vals[i],
+             col = if (abs(vals[i]) > ci) "tomato" else "gray30",
+             lwd = 2)
+    points(lags[i], vals[i], pch = 19, cex = 0.7,
+           col = if (abs(vals[i]) > ci) "tomato" else "gray30")
+  }
+}
+```
+
+# Visualisasi ACF dan PACF
+
+```{r}
+max_lag <- 20
+
+acf_vals  <- acf_manual(x, max_lag)
+pacf_vals <- pacf_manual(x, max_lag)
+
+par(mfrow = c(1, 2))
+
+plot_corr(acf_vals[-1],
+          1:max_lag,
+          title = "ACF Manual")
+
+plot_corr(pacf_vals,
+          1:max_lag,
+          title = "PACF Manual")
+
+par(mfrow = c(1, 1))
+```
+
+# Kesimpulan
+
+* ACF menunjukkan pola autokorelasi keseluruhan
+* PACF membantu mengidentifikasi orde model AR
+* Perhitungan manual memberikan pemahaman mendalam tentang proses statistik
