@@ -115,3 +115,36 @@ x5 <- matrix(15:6,5,2)
 x4
 x5
 x4%*%x5
+
+# 1. Membuat dataframe
+df <- data.frame(
+  nama = c("A", "B", "C", "D"),
+  nilai = c(80, 65, 90, 55)
+)
+
+print(df)
+
+# 2. Looping dengan for
+for (i in 1:nrow(df)) {
+  cat("Mahasiswa:", df$nama[i], "- Nilai:", df$nilai[i], "\n")
+}
+
+# 3. If-else
+x <- 10
+if (x > 5) {
+  print("benar")
+} else {
+  print("salah")
+}
+
+
+# 4. Membuat function
+nilai <- 60
+
+cek_status <- function(nilai) {
+  if (nilai >= 75) {
+    return("Lulus")
+  } else {
+    return("Tidak Lulus")
+  }
+}
