@@ -50,3 +50,43 @@ while(selisih > toleransi && iterasi < maks_iter) {
   cat(sprintf("Iterasi %d | Selisih: %f\n", iterasi, selisih))
 }
 print(beta_nr)
+
+
+# ==========================================
+# PERHITUNGAN STATISTIK INFERENSIAL
+# ==========================================
+  
+var_beta <- solve(-H)
+
+se_beta <- sqrt(diag(var_beta))
+
+z_score <- beta_nr / se_beta
+
+p_value <- 2 * (1 - pnorm(abs(z_score)))
+
+summary_manual <- data.frame(
+  Estimate = round(beta_nr, 4),
+  Std.Error = round(se_beta, 4),
+  z_value = round(z_score, 4),
+  Pr_z = round(p_value, 4)
+)
+
+cat("\n--- Ringkasan Statistik (Manual Newton-Raphson) ---\n")
+print(summary_manual)
+
+# ==========================================
+# VALIDASI DENGAN FUNGSI GLM() BAWAAN R
+# ==========================================
+model_r <- glm(am ~ wt + hp, data = mtcars, family = binomial(link = "logit"))
+
+cat("\n--- Perbandingan dengan Fungsi glm() R ---\n")
+print(coef(model_r))
+
+selisih_validasi <- max(abs(beta_nr - coef(model_r)))
+cat(sprintf("\nSelisih antara manual vs glm(): %e\n", selisih_validasi))
+
+# ==========================================
+# PERHITUNGAN LOG-LIKELIHOOD
+# ==========================================
+log_lik <- sum(Y * log(pi_i) + (1 - Y) * log(1 - pi_i))
+cat(sprintf("Log-Likelihood: %f\n", log_lik))
