@@ -1,0 +1,161 @@
+---
+title: "Time Series Smoothing: Moving Average & Exponential Smoothing"
+output: github_document
+---
+
+# Pendahuluan
+
+Dokumen ini membahas metode smoothing pada time series:
+- Moving Average (MA)
+- Exponential Smoothing (SES, Holt, Holt-Winters, ETS)
+
+---
+
+# Persiapan Library
+
+```{r}
+# install.packages(c("forecast", "ggplot2", "dplyr"))
+
+library(forecast)
+library(ggplot2)
+library(dplyr)
+
+set.seed(42)
+n <- 60
+
+waktu   <- 1:n
+tren    <- 50 + 0.8 * waktu
+musiman <- 10 * sin(2 * pi * waktu / 12)
+noise   <- rnorm(n, mean = 0, sd = 5)
+
+penjualan <- tren + musiman + noise
+ts_data <- ts(penjualan, start = c(2020, 1), frequency = 12)
+
+ts_data
+
+moving_average <- function(x, k) {
+  n  <- length(x)
+  ma <- rep(NA, n)
+  for (i in k:n) {
+    ma[i] <- mean(x[(i - k + 1):i])
+  }
+  return(ma)
+}
+
+ma3  <- moving_average(penjualan, 3)
+ma6  <- moving_average(penjualan, 6)
+ma12 <- moving_average(penjualan, 12)
+
+ma3_filter  <- stats::filter(penjualan, rep(1/3, 3), sides = 1)
+ma6_filter  <- stats::filter(penjualan, rep(1/6, 6), sides = 1)
+ma12_filter <- stats::filter(penjualan, rep(1/12, 12), sides = 1)
+
+ma_centered <- stats::filter(penjualan,
+                             filter = c(0.5, rep(1, 11), 0.5) / 12,
+                             sides = 2)
+
+ma_centered
+
+bobot <- c(1, 2, 3)
+bobot <- bobot / sum(bobot)
+
+moving_average_weighted <- function(x, w) {
+  k  <- length(w)
+  n  <- length(x)
+  wma <- rep(NA, n)
+  for (i in k:n) {
+    wma[i] <- sum(x[(i - k + 1):i] * w)
+  }
+  return(wma)
+}
+
+wma_3 <- moving_average_weighted(penjualan, bobot)
+
+ses_manual <- function(x, alpha) {
+  n <- length(x)
+  s <- rep(NA, n)
+  s[1] <- x[1]
+  for (i in 2:n) {
+    s[i] <- alpha * x[i] + (1 - alpha) * s[i - 1]
+  }
+  return(s)
+}
+
+ses_02 <- ses_manual(penjualan, 0.2)
+ses_05 <- ses_manual(penjualan, 0.5)
+ses_08 <- ses_manual(penjualan, 0.8)
+
+ses_auto <- ses(ts_data, h = 12, alpha = 0.3)
+ses_auto
+
+holt_model <- holt(ts_data, h = 12, alpha = 0.3, beta = 0.1)
+summary(holt_model)
+
+hw_add <- HoltWinters(ts_data, seasonal = "additive")
+hw_mul <- HoltWinters(ts_data, seasonal = "multiplicative")
+
+hw_add
+hw_mul
+
+ets_model <- ets(ts_data)
+summary(ets_model)
+
+ets_forecast <- forecast(ets_model, h = 12)
+ets_forecast
+
+hitung_akurasi <- function(aktual, prediksi) {
+  aktual   <- aktual[!is.na(prediksi)]
+  prediksi <- prediksi[!is.na(prediksi)]
+  error    <- aktual - prediksi
+
+  mae  <- mean(abs(error))
+  rmse <- sqrt(mean(error^2))
+  mape <- mean(abs(error / aktual)) * 100
+
+  return(c(MAE = mae, RMSE = rmse, MAPE = mape))
+}
+
+akurasi <- data.frame(
+  Model = c("MA3", "MA6", "MA12", "SES02", "SES05", "SES08"),
+  rbind(
+    hitung_akurasi(penjualan, ma3),
+    hitung_akurasi(penjualan, ma6),
+    hitung_akurasi(penjualan, ma12),
+    hitung_akurasi(penjualan, ses_02),
+    hitung_akurasi(penjualan, ses_05),
+    hitung_akurasi(penjualan, ses_08)
+  )
+)
+
+akurasi
+
+df_plot <- data.frame(
+  t = waktu,
+  Aktual = penjualan,
+  MA3 = ma3,
+  MA6 = ma6,
+  MA12 = ma12,
+  SES_02 = ses_02,
+  SES_05 = ses_05,
+  SES_08 = ses_08
+)
+
+ggplot(df_plot, aes(x = t)) +
+  geom_line(aes(y = Aktual), linewidth = 0.8) +
+  geom_line(aes(y = MA3), linetype = "dashed") +
+  geom_line(aes(y = MA6), linetype = "dashed") +
+  geom_line(aes(y = MA12), linetype = "dashed") +
+  labs(title = "Moving Average Comparison",
+       x = "Waktu",
+       y = "Nilai") +
+  theme_minimal()
+
+ggplot(df_plot, aes(x = t)) +
+  geom_line(aes(y = Aktual), linewidth = 0.8) +
+  geom_line(aes(y = SES_02), linetype = "dashed") +
+  geom_line(aes(y = SES_05), linetype = "dashed") +
+  geom_line(aes(y = SES_08), linetype = "dashed") +
+  labs(title = "Exponential Smoothing Comparison",
+       x = "Waktu",
+       y = "Nilai") +
+  theme_minimal()
