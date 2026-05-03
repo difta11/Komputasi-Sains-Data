@@ -177,7 +177,35 @@ for (i in 2:length(coef_model)) {
 }
 
 # ---------------------------
-# 15. MENYIMPAN HASIL KE CSV
+# 15. UJI MULTIKOLINEARITAS (VIF)
+# ---------------------------
+cat("\nUji Multikolinearitas (VIF):\n")
+vif_values <- vif(model)
+print(vif_values)
+
+# ---------------------------
+# 16. GOODNESS OF FIT (Hosmer-Lemeshow Test)
+# ---------------------------
+hl_test <- hoslem.test(model$y, fitted(model))
+cat("\nHosmer-Lemeshow Goodness of Fit Test:\n")
+print(hl_test)
+
+# ---------------------------
+# 17. EVALUASI LANJUTAN: ROC & AUC
+# ---------------------------
+library(pROC)
+roc_obj <- roc(data$lulus, data$prob_prediksi)
+auc_val <- auc(roc_obj)
+
+cat("\nArea Under Curve (AUC):\n")
+print(auc_val)
+
+# Plot Kurva ROC
+plot(roc_obj, main = paste("ROC Curve (AUC =", round(auc_val, 4), ")"),
+     col = "#2E86C1", lwd = 4)
+
+# ---------------------------
+# 18. MENYIMPAN HASIL KE CSV
 # ---------------------------
 write.csv(data, "hasil_regresi_logistik.csv", row.names = FALSE)
 cat("\nFile hasil_regresi_logistik.csv berhasil disimpan.\n")
